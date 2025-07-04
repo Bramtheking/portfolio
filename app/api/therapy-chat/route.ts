@@ -131,6 +131,15 @@ Keep responses concise but meaningful (2-3 sentences max for this demo).`
 
     const systemPrompt = isProjectAssistant ? projectSystemPrompt : therapySystemPrompt
 
+    // For preview/development - return a demo response
+    const demoResponse = `Thanks for asking! I'm Bramwel's AI assistant. You asked: "${message}". 
+
+Here's what I can tell you about Bramwel:
+- He's a Full-Stack Developer with expertise in React, Next.js, and Node.js
+- He has experience in mobile app development with React Native
+- He's worked on various projects including e-commerce platforms and mobile applications
+- He's passionate about creating user-friendly and efficient solutions`
+
     // Build conversation context
     const conversationContext = history
       .slice(-6)
@@ -178,7 +187,7 @@ Keep responses concise but meaningful (2-3 sentences max for this demo).`
     if (data.candidates && data.candidates[0] && data.candidates[0].content) {
       const aiResponse = data.candidates[0].content.parts[0].text
       return NextResponse.json({
-        message: aiResponse,
+        response: aiResponse,
         timestamp: new Date().toISOString(),
       })
     } else {
