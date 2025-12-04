@@ -2,6 +2,12 @@
   publish = "."
   command = ""
 
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+  
+  [plugins.inputs]
+    disabled = true
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
