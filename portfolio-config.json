@@ -1,0 +1,41 @@
+{
+  "bootName": "Bramwel Agina",
+  "bootSubtitle": "Web Developer",
+  "name": "Bramwel Agina",
+  "email": "bramwela8@gmail.com.com",
+  "phone": "+254741797609",
+  "bio": "Software Developer passionate about creating innovative solutions and beautiful user experiences.",
+  "linkedin": "https://www.linkedin.com/in/bramwel-agina-a88678266/",
+  "github": "https://github.com/Bramtheking",
+  "instagram": "https://www.instagram.com/bramwelagina/",
+  "profilePic": "giphy.gif",
+  "password": "bram",
+  "resumeFile": "resume.pdf",
+  "recycleItems": [
+    {
+      "icon": "😴",
+      "name": "Procrastination.exe",
+      "desc": "Deleted for good productivity"
+    },
+    {
+      "icon": "🐛",
+      "name": "Bugs_I_Created.zip",
+      "desc": "Fixed and removed"
+    },
+    {
+      "icon": "☕",
+      "name": "Bad_Coffee.java",
+      "desc": "Upgraded to premium beans"
+    },
+    {
+      "icon": "💤",
+      "name": "Sleep_Schedule.txt",
+      "desc": "Working on restoring this..."
+    },
+    {
+      "icon": "🎮",
+      "name": "Distractions_Folder",
+      "desc": "Moved to weekends only"
+    }
+  ]
+}

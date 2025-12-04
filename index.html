@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bramwel Agina - Portfolio</title>
+    <meta name="description" content="A Windows XP-style interactive portfolio showcasing work by Bramwel Agina">
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="stylesheet" href="css/xp-theme.css">
+    <link rel="stylesheet" href="css/windows.css">
+    <link href="https://fonts.googleapis.com/css2?family=Tahoma:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Mobile Rotation Prompt -->
+    <div id="mobile-prompt" class="mobile-prompt hidden">
+        <div class="mobile-prompt-content">
+            <div class="rotate-icon">📱 ↻</div>
+            <h2>Please Rotate Your Device</h2>
+            <p>This portfolio is best viewed in landscape mode</p>
+            <div class="rotate-animation">
+                <div class="phone-icon">📱</div>
+                <div class="arrow-icon">→</div>
+                <div class="phone-icon rotated">📱</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Boot Screen -->
+    <div id="boot-screen" class="boot-screen">
+        <div class="boot-logo">
+            <img src="logo.png" alt="Logo" class="boot-logo-img">
+            <div class="boot-title">
+                <span class="boot-name">Mitchivin</span><span class="boot-xp">xp</span>
+            </div>
+            <div class="boot-subtitle">Visual Designer</div>
+            <div class="loading-bar">
+                <div class="loading-progress">
+                    <div class="loading-square"></div>
+                    <div class="loading-square"></div>
+                    <div class="loading-square"></div>
+                </div>
+            </div>
+        </div>
+        <div class="boot-footer">
+            <div class="boot-instruction">For the best experience<br>Enter Full Screen (F11)</div>
+            <div class="boot-portfolio">Portfolio</div>
+        </div>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="login-screen" class="login-screen hidden">
+        <div class="login-header-bar"></div>
+        <div class="login-main">
+            <div class="login-left">
+                <img src="logo.png" alt="Logo" class="login-logo-img">
+                <div class="login-brand">
+                    <span class="login-brand-name" id="login-brand-name">Bramwel Agina</span><span class="login-brand-xp">xp</span>
+                </div>
+                <div class="login-brand-subtitle" id="login-brand-subtitle">Visual Designer</div>
+            </div>
+            <div class="login-separator"></div>
+            <div class="login-right">
+                <div class="user-card" id="user-login">
+                    <div class="user-avatar">
+                        <div class="avatar-circle">👤</div>
+                    </div>
+                    <div class="user-name" id="display-name">Bramwel Agina</div>
+                    <div class="user-subtitle" id="user-subtitle">Visual Designer</div>
+                </div>
+            </div>
+        </div>
+        <div class="login-instruction" id="login-instruction">To begin, click on <span id="login-click-name">Bramwel Agina</span> to log in</div>
+        <div class="login-footer-bar">
+            <div class="login-restart">
+                <span class="restart-icon">🔄</span>
+                <span>Restart <span id="restart-brand-name">Bramwel Agina</span> XP</span>
+            </div>
+            <div class="login-footer-text">
+                After you log on, the system's yours to explore.<br>
+                Every detail has been designed with a purpose.
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Welcome Screen -->
+    <div id="welcome-screen" class="welcome-screen hidden">
+        <div class="welcome-header-bar"></div>
+        <div class="welcome-content">
+            <div class="welcome-text">welcome</div>
+        </div>
+        <div class="welcome-footer-bar"></div>
+        <audio id="startup-sound" src="windows-xp-startup.mp3" preload="auto"></audio>
+    </div>
+
+    <!-- Desktop -->
+    <div id="desktop" class="desktop hidden">
+        <!-- Desktop Icons -->
+        <div class="desktop-icons">
+            <div class="desktop-icon" data-window="about">
+                <img src="icons/info.png" class="icon-image" alt="About Me">
+                <div class="icon-label">About Me</div>
+            </div>
+            <div class="desktop-icon" data-window="resume">
+                <img src="icons/pdf.png" class="icon-image" alt="My Resume">
+                <div class="icon-label">My Resume</div>
+            </div>
+            <div class="desktop-icon" data-window="projects">
+                <img src="icons/ie.png" class="icon-image" alt="My Projects">
+                <div class="icon-label">My Projects</div>
+            </div>
+            <div class="desktop-icon" data-window="contact">
+                <img src="icons/mail.png" class="icon-image" alt="Contact Me">
+                <div class="icon-label">Contact Me</div>
+            </div>
+            <div class="desktop-icon" data-window="recycle">
+                <img src="icons/recycle-empty.png" class="icon-image" alt="Recycle Bin" id="recycle-icon">
+                <div class="icon-label">Recycle Bin</div>
+            </div>
+            <div class="desktop-icon" data-window="dino">
+                <img src="icons/dino.png" class="icon-image" alt="Dino Game">
+                <div class="icon-label">Dino Game</div>
+            </div>
+            <div class="desktop-icon" data-window="snake">
+                <img src="icons/snake.png" class="icon-image" alt="Snake Game">
+                <div class="icon-label">Snake Game</div>
+            </div>
+            <div class="desktop-icon" data-window="kenlive">
+                <img src="icons/kenlive.jpg" class="icon-image" alt="KenLive Radio Project">
+                <div class="icon-label">KenLive Radio Project</div>
+            </div>
+            <div class="desktop-icon" data-window="milestone">
+                <img src="icons/milestone.png" class="icon-image" alt="Milestone Radio Project">
+                <div class="icon-label">Milestone Radio Project</div>
+            </div>
+            <div class="desktop-icon" data-window="newsline">
+                <img src="icons/newsline.png" class="icon-image" alt="Newsline Radio Project">
+                <div class="icon-label">Newsline Radio Project</div>
+            </div>
+            <div class="desktop-icon" data-window="allotmeal">
+                <img src="icons/allotmeal.jpg" class="icon-image" alt="AllotMeal Project">
+                <div class="icon-label">AllotMeal Project</div>
+            </div>
+            <div class="desktop-icon" onclick="window.open('https://play.google.com/store/apps/details?id=com.milestoneinstitute.radio', '_blank')">
+                <img src="icons/milestone.png" class="icon-image" alt="Milestone Radio App">
+                <div class="icon-label">Milestone Radio App</div>
+            </div>
+        </div>
+
+        <!-- Windows Container -->
+        <div id="windows-container"></div>
+    </div>
+
+    <!-- Taskbar -->
+    <div class="taskbar">
+        <button class="start-button" id="start-button">
+            <img src="logo.png" alt="Start" class="start-icon">
+            <span>start</span>
+        </button>
+        <div class="taskbar-tasks" id="taskbar-tasks"></div>
+        <div class="system-tray">
+            <div class="tray-icons">
+                <span class="tray-icon" id="info-icon" title="About Creator">ℹ️</span>
+                <span class="tray-icon" id="theme-icon" title="Toggle Eye Comfort Mode">🌙</span>
+            </div>
+            <div class="clock" id="clock">12:00 PM</div>
+        </div>
+    </div>
+
+    <!-- Start Menu -->
+    <div class="start-menu hidden" id="start-menu">
+        <div class="start-menu-header">
+            <div class="start-user-avatar">👤</div>
+            <div class="start-user-name" id="start-display-name">Bramwel Agina</div>
+        </div>
+        <div class="start-menu-body">
+            <div class="start-menu-left">
+                <div class="start-menu-item" data-window="projects">
+                    <img src="icons/ie.png" class="menu-icon-img">
+                    <div class="menu-text">
+                        <div class="menu-title">My Projects</div>
+                        <div class="menu-subtitle">View my work</div>
+                    </div>
+                </div>
+                <div class="start-menu-item" data-window="contact">
+                    <img src="icons/mail.png" class="menu-icon-img">
+                    <div class="menu-text">
+                        <div class="menu-title">Contact Me</div>
+                        <div class="menu-subtitle">Send me a message</div>
+                    </div>
+                </div>
+                <div class="start-menu-item" data-window="about">
+                    <img src="icons/info.png" class="menu-icon-img">
+                    <span>About Me</span>
+                </div>
+                <div class="start-menu-separator"></div>
+                <div class="start-menu-item" data-window="dino">
+                    <img src="icons/dino.png" class="menu-icon-img">
+                    <div class="menu-text">
+                        <div class="menu-title">Dino Game</div>
+                        <div class="menu-subtitle">Jump and survive!</div>
+                    </div>
+                </div>
+                <div class="start-menu-item" data-window="snake">
+                    <img src="icons/snake.png" class="menu-icon-img">
+                    <div class="menu-text">
+                        <div class="menu-title">Snake Game</div>
+                        <div class="menu-subtitle">Classic snake fun</div>
+                    </div>
+                </div>
+                <div class="start-menu-separator"></div>
+                <div class="start-menu-item" data-window="spotify">
+                    <img src="icons/spotify.png" class="menu-icon-img">
+                    <div class="menu-text">
+                        <div class="menu-title">Spotify Player</div>
+                        <div class="menu-subtitle">Listen to music</div>
+                    </div>
+                </div>
+                <div class="start-menu-separator"></div>
+                <div class="start-menu-item" id="all-programs-item">
+                    <img src="icons/folder - open.png" class="menu-icon-img">
+                    <span>All Programs</span>
+                    <span class="menu-arrow">▶</span>
+                    <div class="submenu" id="all-programs-submenu">
+                            <div class="start-menu-item" data-window="about">
+                                <img src="icons/info.png" class="menu-icon-img">
+                                <span>About Me</span>
+                            </div>
+                            <div class="start-menu-item" data-window="projects">
+                                <img src="icons/ie.png" class="menu-icon-img">
+                                <span>My Projects</span>
+                            </div>
+                            <div class="start-menu-item" data-window="contact">
+                                <img src="icons/mail.png" class="menu-icon-img">
+                                <span>Contact Me</span>
+                            </div>
+                            <div class="start-menu-item" data-window="resume">
+                                <img src="icons/document.png" class="menu-icon-img">
+                                <span>My Resume</span>
+                            </div>
+                            <div class="start-menu-separator"></div>
+                            <div class="start-menu-item" data-window="dino">
+                                <img src="icons/dino.png" class="menu-icon-img">
+                                <span>Dino Game</span>
+                            </div>
+                            <div class="start-menu-item" data-window="snake">
+                                <img src="icons/snake.png" class="menu-icon-img">
+                                <span>Snake Game</span>
+                            </div>
+                            <div class="start-menu-item" data-window="spotify">
+                                <img src="icons/spotify.png" class="menu-icon-img">
+                                <span>Spotify Player</span>
+                            </div>
+                            <div class="start-menu-separator"></div>
+                            <div class="start-menu-item" data-window="kenlive">
+                                <img src="icons/kenlive.jpg" class="menu-icon-img">
+                                <span>KenLive Radio Project</span>
+                            </div>
+                            <div class="start-menu-item" data-window="milestone">
+                                <img src="icons/milestone.png" class="menu-icon-img">
+                                <span>Milestone Radio Project</span>
+                            </div>
+                            <div class="start-menu-item" data-window="newsline">
+                                <img src="icons/newsline.png" class="menu-icon-img">
+                                <span>Newsline Radio Project</span>
+                            </div>
+                            <div class="start-menu-item" data-window="allotmeal">
+                                <img src="icons/allotmeal.jpg" class="menu-icon-img">
+                                <span>AllotMeal Project</span>
+                            </div>
+                            <div class="start-menu-item" onclick="window.open('https://play.google.com/store/apps/details?id=com.milestoneinstitute.radio', '_blank')">
+                                <img src="icons/milestone.png" class="menu-icon-img">
+                                <span>Milestone Radio App</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="start-menu-right">
+                    <div class="start-menu-item" onclick="window.open('https://www.instagram.com/bramwelagina/', '_blank')">
+                        <img src="icons/instagram.png" class="menu-icon-img">
+                        <span>Instagram</span>
+                    </div>
+                    <div class="start-menu-item" onclick="window.open('https://github.com/Bramtheking', '_blank')">
+                        <img src="icons/github.png" class="menu-icon-img">
+                        <span>GitHub</span>
+                    </div>
+                    <div class="start-menu-item" onclick="window.open('https://www.linkedin.com/in/bramwel-agina-a88678266/', '_blank')">
+                        <img src="icons/linkedin.png" class="menu-icon-img">
+                        <span>LinkedIn</span>
+                    </div>
+                    <div class="start-menu-item" data-window="resume">
+                        <img src="icons/document.png" class="menu-icon-img">
+                        <span>My Resume</span>
+                    </div>
+                </div>
+            </div>
+            <div class="start-menu-footer">
+                <div class="start-menu-footer-left">
+                    <div class="start-menu-footer-btn" id="fullscreen-toggle-btn">
+                        <img src="icons/fullscreen.png" style="width: 24px; height: 24px;">
+                        <span>Full Screen</span>
+                    </div>
+                </div>
+                <div class="start-menu-footer-right">
+                    <div class="start-menu-footer-btn" id="logout-item">
+                        <img src="icons/Logoff.png" style="width: 24px; height: 24px;">
+                        <span>Log Off</span>
+                    </div>
+                    <div class="start-menu-footer-btn" id="shutdown-btn">
+                        <img src="icons/shutdown.png" style="width: 24px; height: 24px;">
+                        <span>Shut Down</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Shutdown Screen -->
+    <div id="shutdown-screen" class="shutdown-screen hidden">
+        <div class="shutdown-logo">
+            <img src="logo.png" alt="Windows XP">
+        </div>
+        <div class="shutdown-brand">
+            <div class="shutdown-name" id="shutdown-brand-name">Windows XP</div>
+            <div class="shutdown-subtitle" id="shutdown-brand-subtitle">Professional</div>
+        </div>
+        <div class="shutdown-loading">
+            <div class="shutdown-bar">
+                <div class="shutdown-square">
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                </div>
+            </div>
+        </div>
+        <div class="shutdown-text">Shutting down...</div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="js/desktop.js"></script>
+    <script src="js/windows.js"></script>
+    <script src="js/games.js"></script>
+</body>
+</html>
