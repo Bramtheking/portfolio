@@ -1,25 +1,57 @@
 // Desktop.js - Main desktop functionality
 
 // Check for mobile and orientation
+let hasInitialized = false;
+let currentScreen = 'boot'; // Track which screen is active
+
 function checkMobileOrientation() {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     const isPortrait = window.innerHeight > window.innerWidth;
     const mobilePrompt = document.getElementById('mobile-prompt');
+    const bootScreen = document.getElementById('boot-screen');
+    const loginScreen = document.getElementById('login-screen');
+    const welcomeScreen = document.getElementById('welcome-screen');
+    const desktop = document.getElementById('desktop');
     
     if (isMobile && isPortrait) {
+        // Show mobile prompt, hide everything else
         mobilePrompt.classList.remove('hidden');
-        document.getElementById('boot-screen').style.display = 'none';
-        document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('welcome-screen').style.display = 'none';
-        document.getElementById('desktop').style.display = 'none';
+        bootScreen.style.display = 'none';
+        loginScreen.style.display = 'none';
+        welcomeScreen.style.display = 'none';
+        desktop.style.display = 'none';
     } else {
+        // Hide mobile prompt
         mobilePrompt.classList.add('hidden');
-        // Show the appropriate screen
-        if (!document.getElementById('boot-screen').classList.contains('hidden')) {
-            document.getElementById('boot-screen').style.display = 'flex';
+        
+        // Restore the correct screen based on what was active
+        if (currentScreen === 'boot' && !bootScreen.classList.contains('hidden')) {
+            bootScreen.style.display = 'flex';
+        } else if (currentScreen === 'login' && !loginScreen.classList.contains('hidden')) {
+            loginScreen.style.display = 'flex';
+        } else if (currentScreen === 'welcome' && !welcomeScreen.classList.contains('hidden')) {
+            welcomeScreen.style.display = 'flex';
+        } else if (currentScreen === 'desktop' && !desktop.classList.contains('hidden')) {
+            desktop.style.display = 'block';
+        } else if (!hasInitialized) {
+            // First time initialization
+            bootScreen.style.display = 'flex';
+            currentScreen = 'boot';
+            hasInitialized = true;
         }
     }
 }
+
+// Prevent issues when page becomes visible again
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+        // Page is visible again, ensure desktop is shown if it should be
+        const desktop = document.getElementById('desktop');
+        if (!desktop.classList.contains('hidden')) {
+            desktop.style.display = 'block';
+        }
+    }
+});
 
 // Boot sequence
 document.addEventListener('DOMContentLoaded', () => {
@@ -31,20 +63,29 @@ document.addEventListener('DOMContentLoaded', () => {
 window.addEventListener('resize', checkMobileOrientation);
 window.addEventListener('orientationchange', checkMobileOrientation);
 
+let bootSequenceStarted = false;
+
 function initializePortfolio() {
     // Load saved settings
     loadSettings();
     
-    // Start boot sequence
-    setTimeout(() => {
-        document.getElementById('boot-screen').classList.add('hidden');
-        document.getElementById('login-screen').classList.remove('hidden');
-    }, 3000);
+    // Start boot sequence only once
+    if (!bootSequenceStarted) {
+        bootSequenceStarted = true;
+        setTimeout(() => {
+            document.getElementById('boot-screen').classList.add('hidden');
+            document.getElementById('login-screen').classList.remove('hidden');
+            document.getElementById('login-screen').style.display = 'flex';
+            currentScreen = 'login';
+        }, 3000);
+    }
     
     // Login screen click - go to welcome screen
     document.getElementById('user-login').addEventListener('click', () => {
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('welcome-screen').classList.remove('hidden');
+        document.getElementById('welcome-screen').style.display = 'flex';
+        currentScreen = 'welcome';
         
         // Play startup sound
         const startupSound = document.getElementById('startup-sound');
@@ -56,7 +97,34 @@ function initializePortfolio() {
         setTimeout(() => {
             document.getElementById('welcome-screen').classList.add('hidden');
             document.getElementById('desktop').classList.remove('hidden');
+            document.getElementById('desktop').style.display = 'block';
+            currentScreen = 'desktop';
             updateClock();
+            
+            // Auto-open Projects and Experience windows side-by-side on the right (desktop only)
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
+            if (!isMobile) {
+                setTimeout(() => {
+                    // Open both windows simultaneously for faster loading
+                    const expWindow = createWindow('experience');
+                    const projWindow = createWindow('projects');
+                    
+                    if (expWindow) {
+                        expWindow.style.width = '350px';
+                        expWindow.style.height = '450px';
+                        expWindow.style.left = (window.innerWidth - 720) + 'px';
+                        expWindow.style.top = '30px';
+                    }
+                    
+                    if (projWindow) {
+                        projWindow.style.width = '350px';
+                        projWindow.style.height = '450px';
+                        projWindow.style.left = (window.innerWidth - 360) + 'px';
+                        projWindow.style.top = '30px';
+                    }
+                }, 100);
+            }
             // Use more efficient clock update
             let lastClockUpdate = Date.now();
             function clockLoop() {
@@ -68,6 +136,9 @@ function initializePortfolio() {
                 requestAnimationFrame(clockLoop);
             }
             clockLoop();
+            
+            // Start notification loop (15 sec first, then every 50 sec)
+            startNotificationLoop();
         }, 3000);
     });
     
@@ -79,19 +150,14 @@ function initializeDesktop() {
     // Desktop icons
     const desktopIcons = document.querySelectorAll('.desktop-icon');
     desktopIcons.forEach(icon => {
-        // Load saved position
-        const savedPos = localStorage.getItem(`icon_pos_${icon.dataset.window}`);
-        if (savedPos) {
-            const pos = JSON.parse(savedPos);
-            icon.style.position = 'absolute';
-            icon.style.left = pos.x + 'px';
-            icon.style.top = pos.y + 'px';
-        } else {
-            // Set initial position from grid
-            const rect = icon.getBoundingClientRect();
-            icon.dataset.initialX = rect.left;
-            icon.dataset.initialY = rect.top;
-        }
+        // Don't load saved positions - keep icons in grid
+        // This prevents overlapping issues
+        icon.style.position = 'static';
+        
+        // Set initial position from grid
+        const rect = icon.getBoundingClientRect();
+        icon.dataset.initialX = rect.left;
+        icon.dataset.initialY = rect.top;
         
         // Make draggable with single click to open
         let isDragging = false;
@@ -99,32 +165,35 @@ function initializeDesktop() {
         let startX, startY, iconX, iconY;
         
         icon.onmousedown = function(e) {
+            e.preventDefault();
             startX = e.clientX;
             startY = e.clientY;
-            const rect = icon.getBoundingClientRect();
-            iconX = rect.left;
-            iconY = rect.top;
             dragStarted = false;
-            
-            if (!icon.style.position || icon.style.position === 'static') {
-                icon.style.position = 'absolute';
-                icon.style.left = iconX + 'px';
-                icon.style.top = iconY + 'px';
-            }
             
             function onMouseMove(event) {
                 const deltaX = event.clientX - startX;
                 const deltaY = event.clientY - startY;
                 
-                // Only start dragging if moved more than 5px
-                if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
-                    isDragging = true;
-                    dragStarted = true;
+                // Only start dragging if moved more than 10px
+                if (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
+                    if (!isDragging) {
+                        // First time dragging - convert to absolute positioning
+                        isDragging = true;
+                        dragStarted = true;
+                        
+                        const rect = icon.getBoundingClientRect();
+                        const container = icon.parentElement.getBoundingClientRect();
+                        iconX = rect.left - container.left;
+                        iconY = rect.top - container.top;
+                        icon.style.position = 'absolute';
+                        icon.style.left = iconX + 'px';
+                        icon.style.top = iconY + 'px';
+                    }
                 }
                 
                 if (isDragging) {
-                    const newX = iconX + deltaX;
-                    const newY = iconY + deltaY;
+                    const newX = iconX + (event.clientX - startX);
+                    const newY = iconY + (event.clientY - startY);
                     icon.style.left = newX + 'px';
                     icon.style.top = newY + 'px';
                 }
@@ -160,10 +229,78 @@ function initializeDesktop() {
         icon.ondragstart = function() {
             return false;
         };
+        
+        // Touch support for mobile
+        icon.ontouchstart = function(e) {
+            const touch = e.touches[0];
+            startX = touch.clientX;
+            startY = touch.clientY;
+            dragStarted = false;
+            
+            function onTouchMove(event) {
+                const touch = event.touches[0];
+                const deltaX = touch.clientX - startX;
+                const deltaY = touch.clientY - startY;
+                
+                // Only start dragging if moved more than 15px (more forgiving on mobile)
+                if (Math.abs(deltaX) > 15 || Math.abs(deltaY) > 15) {
+                    if (!isDragging) {
+                        // First time dragging - convert to absolute positioning
+                        isDragging = true;
+                        dragStarted = true;
+                        e.preventDefault(); // Prevent scrolling when dragging
+                        
+                        const rect = icon.getBoundingClientRect();
+                        const container = icon.parentElement.getBoundingClientRect();
+                        iconX = rect.left - container.left;
+                        iconY = rect.top - container.top;
+                        icon.style.position = 'absolute';
+                        icon.style.left = iconX + 'px';
+                        icon.style.top = iconY + 'px';
+                    }
+                }
+                
+                if (isDragging) {
+                    event.preventDefault();
+                    const newX = iconX + (touch.clientX - startX);
+                    const newY = iconY + (touch.clientY - startY);
+                    icon.style.left = newX + 'px';
+                    icon.style.top = newY + 'px';
+                }
+            }
+            
+            function onTouchEnd() {
+                document.removeEventListener('touchmove', onTouchMove);
+                document.removeEventListener('touchend', onTouchEnd);
+                
+                if (isDragging) {
+                    // Save position
+                    const pos = {
+                        x: parseInt(icon.style.left),
+                        y: parseInt(icon.style.top)
+                    };
+                    localStorage.setItem(`icon_pos_${icon.dataset.window}`, JSON.stringify(pos));
+                } else if (!dragStarted) {
+                    // It was a tap, open window
+                    const windowType = icon.dataset.window;
+                    if (windowType) {
+                        createWindow(windowType);
+                    }
+                }
+                
+                isDragging = false;
+                dragStarted = false;
+            }
+            
+            document.addEventListener('touchmove', onTouchMove, { passive: false });
+            document.addEventListener('touchend', onTouchEnd);
+        };
     });
     
     // Start button
     document.getElementById('start-button').addEventListener('click', toggleStartMenu);
+    
+
     
     // Start menu items
     const startMenuItems = document.querySelectorAll('.start-menu-item');
@@ -471,7 +608,7 @@ function createWindow(type) {
             existingWindow.classList.remove('minimized');
         }
         focusWindow(existingWindow);
-        return;
+        return existingWindow;
     }
     
     const windowsContainer = document.getElementById('windows-container');
@@ -542,6 +679,8 @@ function createWindow(type) {
     } else if (type === 'spotify') {
         setTimeout(() => initSpotifyPlayer(), 100);
     }
+    
+    return window;
 }
 
 
@@ -672,6 +811,53 @@ function getWindowContent(type) {
                         </div>
                         
                         <div class="credits-section">
+                            <h2 class="credits-heading">💼 PROFESSIONAL EXPERIENCE</h2>
+                            
+                            <div class="credits-item">
+                                <p class="credits-role">Full-Stack Web Developer</p>
+                                <p class="credits-name">AllotMeal Afroc Platform</p>
+                                <p class="credits-desc">2023 - Present</p>
+                                <p class="credits-desc">Led redesign and deployment of allotmealafroc.netlify.app connecting 1000+ hotels, businesses, and stakeholders through listings, networking, and payment services. Built with Next.js, MongoDB, and Netlify.</p>
+                            </div>
+                            
+                            <div class="credits-item">
+                                <p class="credits-role">Mobile App Developer</p>
+                                <p class="credits-name">SCHACCS & Educational Institutions</p>
+                                <p class="credits-desc">2024 - 2025</p>
+                                <p class="credits-desc">Developed parent-student portal with 10,000+ downloads featuring fee overview, academic results, attendance tracking, and event notifications. Built using Flutter, Firebase, and SQLite.</p>
+                            </div>
+                            
+                            <div class="credits-item">
+                                <p class="credits-role">Android/iOS Developer</p>
+                                <p class="credits-name">Various Clients</p>
+                                <p class="credits-desc">2022 - 2025</p>
+                                <p class="credits-desc">Developed cross-platform mobile applications integrating RESTful APIs. Built secure SACCO app processing $2M+ in transactions with zero security incidents using Java (Android) and Swift (iOS).</p>
+                            </div>
+                            
+                            <div class="credits-item">
+                                <p class="credits-role">CRM Web Developer</p>
+                                <p class="credits-name">Multiple Organizations</p>
+                                <p class="credits-desc">Jan 2023 - Dec 2023</p>
+                                <p class="credits-desc">Built secure, responsive CRM modules using PHP, Laravel, and MySQL. Collaborated in Agile teams to deliver client requirements on schedule, improving operational efficiency by 60%.</p>
+                            </div>
+                            
+                            <div class="credits-item">
+                                <p class="credits-role">Full-Stack Developer & IT Trainer</p>
+                                <p class="credits-name">Newsline Media</p>
+                                <p class="credits-desc">Aug 2024 - Dec 2025</p>
+                                <p class="credits-desc">Developed platform connecting businesses with students seeking attachments and training opportunities across Kenya. Built comprehensive networking system bridging education and industry.</p>
+                                <p class="credits-desc">Trained attachés in various IT disciplines: Web Development, Android App Development, AI/ML, Cybersecurity, Networking, and Database Management.</p>
+                            </div>
+                            
+                            <div class="credits-item">
+                                <p class="credits-role">Cybersecurity Trainer</p>
+                                <p class="credits-name">MediaCrest</p>
+                                <p class="credits-desc">2024</p>
+                                <p class="credits-desc">Trained professionals in cybersecurity best practices, threat detection, and security protocols. Developed training materials and conducted hands-on workshops on network security and ethical hacking.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="credits-section">
                             <h2 class="credits-heading">🎓 EDUCATION & GROWTH</h2>
                             <div class="credits-item">
                                 <p class="credits-name">Software Engineering</p>
@@ -711,36 +897,135 @@ function getWindowContent(type) {
             icon: '💼',
             title: 'My Projects',
             html: `
-                <h1>Live Projects</h1>
-                <p style="margin-bottom: 20px;">Click any project to open it in a new window</p>
-                <div class="project-grid">
-                    <div class="project-card" onclick="createWindow('kenlive')">
-                        <h3>📻 KenLive Radio</h3>
-                        <p>Live streaming radio platform with real-time broadcasting and analytics.</p>
-                        <span class="project-link">Open App →</span>
+                <div style="padding: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100%;">
+                    <h1 style="color: white; font-size: 32px; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">Featured Projects</h1>
+                    <p style="color: rgba(255,255,255,0.9); margin-bottom: 30px; font-size: 14px;">Click any project to explore</p>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+                        <!-- KenLive Radio -->
+                        <div onclick="createWindow('kenlive')" style="background: white; border-radius: 12px; padding: 24px; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" onmouseover="this.style.transform='translateY(-8px)'; this.style.boxShadow='0 12px 24px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)'">
+                            <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; margin-bottom: 16px;">📻</div>
+                            <h3 style="color: #1a202c; font-size: 18px; margin-bottom: 8px;">KenLive Radio</h3>
+                            <p style="color: #718096; font-size: 13px; line-height: 1.6; margin-bottom: 12px;">Community news and programs founded by Ken Wakuraya, former Inooro news anchor. Listed at radio.or.ke/kenlive-radio/</p>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
+                                <span style="background: #e6f2ff; color: #0066cc; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Live Streaming</span>
+                                <span style="background: #e6f2ff; color: #0066cc; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">National Visibility</span>
+                            </div>
+                            <span style="color: #667eea; font-weight: 600; font-size: 14px;">Open App →</span>
+                        </div>
+                        
+                        <!-- Milestone Radio -->
+                        <div onclick="createWindow('milestone')" style="background: white; border-radius: 12px; padding: 24px; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" onmouseover="this.style.transform='translateY(-8px)'; this.style.boxShadow='0 12px 24px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)'">
+                            <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; margin-bottom: 16px;">🎓</div>
+                            <h3 style="color: #1a202c; font-size: 18px; margin-bottom: 8px;">Milestone Radio</h3>
+                            <p style="color: #718096; font-size: 13px; line-height: 1.6; margin-bottom: 12px;">Radio for Milestone Institute supporting student broadcasting and media practice. Listed at radio.or.ke/milestone-radio/</p>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
+                                <span style="background: #ffe6f0; color: #cc0066; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Educational</span>
+                                <span style="background: #ffe6f0; color: #cc0066; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Student Media</span>
+                            </div>
+                            <span style="color: #f5576c; font-weight: 600; font-size: 14px;">Open App →</span>
+                        </div>
+                        
+                        <!-- Newsline Radio -->
+                        <div onclick="createWindow('newsline')" style="background: white; border-radius: 12px; padding: 24px; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" onmouseover="this.style.transform='translateY(-8px)'; this.style.boxShadow='0 12px 24px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)'">
+                            <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; margin-bottom: 16px;">📰</div>
+                            <h3 style="color: #1a202c; font-size: 18px; margin-bottom: 8px;">Newsline Radio</h3>
+                            <p style="color: #718096; font-size: 13px; line-height: 1.6; margin-bottom: 12px;">News dissemination and student journalism training platform. Listed at radio.or.ke/newsline/</p>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
+                                <span style="background: #e6f9ff; color: #0099cc; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">News Platform</span>
+                                <span style="background: #e6f9ff; color: #0099cc; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Journalism</span>
+                            </div>
+                            <span style="color: #00f2fe; font-weight: 600; font-size: 14px;">Open App →</span>
+                        </div>
+                        
+                        <!-- AllotMeal -->
+                        <div onclick="createWindow('allotmeal')" style="background: white; border-radius: 12px; padding: 24px; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" onmouseover="this.style.transform='translateY(-8px)'; this.style.boxShadow='0 12px 24px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)'">
+                            <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; margin-bottom: 16px;">🍽️</div>
+                            <h3 style="color: #1a202c; font-size: 18px; margin-bottom: 8px;">AllotMeal Africa</h3>
+                            <p style="color: #718096; font-size: 13px; line-height: 1.6; margin-bottom: 12px;">Platform connecting companies across Africa - hotels, restaurants, agriculture, and business services with advanced booking and payment integration.</p>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
+                                <span style="background: #fff4e6; color: #cc6600; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Business Platform</span>
+                                <span style="background: #fff4e6; color: #cc6600; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Pan-African</span>
+                            </div>
+                            <span style="color: #fa709a; font-weight: 600; font-size: 14px;">Open App →</span>
+                        </div>
+                        
+                        <!-- Newsline Media -->
+                        <div onclick="createWindow('newslinemedia')" style="background: white; border-radius: 12px; padding: 24px; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" onmouseover="this.style.transform='translateY(-8px)'; this.style.boxShadow='0 12px 24px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)'">
+                            <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #30cfd0 0%, #330867 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; margin-bottom: 16px;">🤝</div>
+                            <h3 style="color: #1a202c; font-size: 18px; margin-bottom: 8px;">Newsline Media</h3>
+                            <p style="color: #718096; font-size: 13px; line-height: 1.6; margin-bottom: 12px;">Platform connecting businesses with students seeking attachments and training opportunities across Kenya. Bridging education and industry.</p>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
+                                <span style="background: #e6fff9; color: #00997a; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Education</span>
+                                <span style="background: #e6fff9; color: #00997a; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Networking</span>
+                            </div>
+                            <span style="color: #30cfd0; font-weight: 600; font-size: 14px;">Open App →</span>
+                        </div>
+                        
+                        <!-- KenLive Website -->
+                        <div onclick="createWindow('kenlive-web')" style="background: white; border-radius: 12px; padding: 24px; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: relative;" onmouseover="this.style.transform='translateY(-8px)'; this.style.boxShadow='0 12px 24px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)'">
+                            <div style="position: absolute; top: 12px; right: 12px; background: #ff6b6b; color: white; padding: 4px 8px; border-radius: 12px; font-size: 10px; font-weight: 700;">REDESIGNED</div>
+                            <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; margin-bottom: 16px;">🔧</div>
+                            <h3 style="color: #1a202c; font-size: 18px; margin-bottom: 8px;">KenLive.co.ke</h3>
+                            <p style="color: #718096; font-size: 13px; line-height: 1.6; margin-bottom: 12px;">Complete website renovation with modern UI/UX, improved performance, and responsive design. 60% faster loading times.</p>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
+                                <span style="background: #ffe6e6; color: #cc0000; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Renovation</span>
+                                <span style="background: #ffe6e6; color: #cc0000; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Performance</span>
+                            </div>
+                            <span style="color: #ff6b6b; font-weight: 600; font-size: 14px;">Open Website →</span>
+                        </div>
+                        
+                        <!-- Newsline Website -->
+                        <div onclick="createWindow('newsline-web')" style="background: white; border-radius: 12px; padding: 24px; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: relative;" onmouseover="this.style.transform='translateY(-8px)'; this.style.boxShadow='0 12px 24px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)'">
+                            <div style="position: absolute; top: 12px; right: 12px; background: #56ab2f; color: white; padding: 4px 8px; border-radius: 12px; font-size: 10px; font-weight: 700;">REDESIGNED</div>
+                            <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; margin-bottom: 16px;">📰</div>
+                            <h3 style="color: #1a202c; font-size: 18px; margin-bottom: 8px;">Newsline.co.ke</h3>
+                            <p style="color: #718096; font-size: 13px; line-height: 1.6; margin-bottom: 12px;">News platform UI/UX overhaul with focus on readability, SEO optimization, and accessibility standards.</p>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
+                                <span style="background: #f0ffe6; color: #336600; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">News Platform</span>
+                                <span style="background: #f0ffe6; color: #336600; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">SEO</span>
+                            </div>
+                            <span style="color: #56ab2f; font-weight: 600; font-size: 14px;">Open Website →</span>
+                        </div>
+                        
+                        <!-- BigStar News -->
+                        <div onclick="createWindow('bigstar-web')" style="background: white; border-radius: 12px; padding: 24px; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: relative;" onmouseover="this.style.transform='translateY(-8px)'; this.style.boxShadow='0 12px 24px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)'">
+                            <div style="position: absolute; top: 12px; right: 12px; background: #f7971e; color: white; padding: 4px 8px; border-radius: 12px; font-size: 10px; font-weight: 700;">REDESIGNED</div>
+                            <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; margin-bottom: 16px;">⭐</div>
+                            <h3 style="color: #1a202c; font-size: 18px; margin-bottom: 8px;">BigStarNews.co.ke</h3>
+                            <p style="color: #718096; font-size: 13px; line-height: 1.6; margin-bottom: 12px;">Complete stack renovation from frontend to backend. Enhanced security, scalability, and modern CMS.</p>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
+                                <span style="background: #fff9e6; color: #996600; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Full Stack</span>
+                                <span style="background: #fff9e6; color: #996600; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Security</span>
+                            </div>
+                            <span style="color: #f7971e; font-weight: 600; font-size: 14px;">Open Website →</span>
+                        </div>
+                        
+                        <!-- Milestone Radio App -->
+                        <div onclick="window.open('https://play.google.com/store/apps/details?id=com.milestoneinstitute.radio', '_blank')" style="background: white; border-radius: 12px; padding: 24px; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" onmouseover="this.style.transform='translateY(-8px)'; this.style.boxShadow='0 12px 24px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)'">
+                            <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; margin-bottom: 16px;">📱</div>
+                            <h3 style="color: #1a202c; font-size: 18px; margin-bottom: 8px;">Milestone Radio App</h3>
+                            <p style="color: #718096; font-size: 13px; line-height: 1.6; margin-bottom: 12px;">Native Android app on Google Play Store with 10,000+ downloads. Reliable technical delivery with national reach.</p>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
+                                <span style="background: #e6fff9; color: #00997a; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Android</span>
+                                <span style="background: #e6fff9; color: #00997a; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">10K+ Downloads</span>
+                            </div>
+                            <span style="color: #00997a; font-weight: 600; font-size: 14px;">Open in Play Store →</span>
+                        </div>
                     </div>
-                    <div class="project-card" onclick="createWindow('milestone')">
-                        <h3>📻 Milestone Radio</h3>
-                        <p>Educational institution radio system with scheduled programming.</p>
-                        <span class="project-link">Open App →</span>
-                    </div>
-                    <div class="project-card" onclick="createWindow('newsline')">
-                        <h3>📻 Newsline Radio</h3>
-                        <p>Professional news broadcasting platform with live updates.</p>
-                        <span class="project-link">Open App →</span>
-                    </div>
-                    <div class="project-card" onclick="createWindow('allotmeal')">
-                        <h3>🌐 AllotMeal</h3>
-                        <p>Full-stack web application with modern features and responsive design.</p>
-                        <span class="project-link">Open App →</span>
-                    </div>
-                    <div class="project-card" onclick="window.open('https://play.google.com/store/apps/details?id=com.milestoneinstitute.radio', '_blank')">
-                        <h3>📱 Milestone Radio App</h3>
-                        <p>Android app on Google Play Store with 10,000+ downloads.</p>
-                        <span class="project-link">Open in Play Store →</span>
+                    
+                    <div style="margin-top: 30px; text-align: center;">
+                        <button onclick="createWindow('allprojects')" style="background: white; color: #667eea; padding: 12px 30px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2); transition: all 0.3s;" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 12px rgba(0,0,0,0.3)'" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.2)'">
+                            📂 View All Projects (20+)
+                        </button>
                     </div>
                 </div>
             `
+        },
+        allprojects: {
+            icon: '📂',
+            title: 'All Projects - Complete Portfolio',
+            html: `<div style="padding:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);height:100%;overflow-y:auto"><div style="padding:40px 40px 30px"><h1 style="color:white;font-size:36px;margin:0 0 10px 0;text-shadow:2px 2px 4px rgba(0,0,0,0.3);font-weight:bold">Complete Portfolio</h1><p style="color:rgba(255,255,255,0.95);font-size:16px;margin:0">20+ projects across web, mobile, AI/ML, design & research</p></div><div style="padding:0 40px 40px"><div style="margin-bottom:40px"><h2 style="color:white;font-size:24px;margin:0 0 20px 0;display:flex;align-items:center;gap:10px"><span style="font-size:28px">🌐</span> Web Projects</h2><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px"><div onclick="createWindow('allotmeal')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#fa709a 0%,#fee140 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">AllotMeal Africa</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Platform connecting companies across Africa</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Next.js</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">MongoDB</span></div></div><div onclick="createWindow('newslinemedia')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#30cfd0 0%,#330867 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Newsline Media</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Student-business connection platform</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Education</span></div></div><div onclick="createWindow('kenlive-web')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#ff6b6b 0%,#ee5a6f 100%)"></div><div style="position:absolute;top:16px;right:16px;background:#ff6b6b;color:white;padding:6px 12px;border-radius:20px;font-size:11px;font-weight:700">REDESIGNED</div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">KenLive.co.ke</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">60% faster loading times</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Performance</span></div></div><div onclick="createWindow('newsline-web')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#56ab2f 0%,#a8e063 100%)"></div><div style="position:absolute;top:16px;right:16px;background:#ff6b6b;color:white;padding:6px 12px;border-radius:20px;font-size:11px;font-weight:700">REDESIGNED</div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Newsline.co.ke</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">SEO optimization</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">SEO</span></div></div><div onclick="createWindow('bigstar-web')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#f7971e 0%,#ffd200 100%)"></div><div style="position:absolute;top:16px;right:16px;background:#ff6b6b;color:white;padding:6px 12px;border-radius:20px;font-size:11px;font-weight:700">REDESIGNED</div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">BigStarNews.co.ke</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Full stack renovation</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Full Stack</span></div></div><div onclick="window.open('https://github.com/Bramtheking/Ai-detector-Website-React.git','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#667eea 0%,#764ba2 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">AI Detector Website 🔗</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">AI detection platform</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">React</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">TensorFlow</span></div></div><div onclick="window.open('https://drive.google.com/file/d/1EqzwYl-XUOfP6hwRrlKUMhctETF5ridg/view?usp=drive_link','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#4facfe 0%,#00f2fe 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">School Management System 🔗</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Educational platform</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">React</span></div></div></div></div><div style="margin-bottom:40px"><h2 style="color:white;font-size:24px;margin:0 0 20px 0;display:flex;align-items:center;gap:10px"><span style="font-size:28px">📱</span> Mobile Apps</h2><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px"><div onclick="window.open('https://github.com/Bramtheking/SCHACCS.git','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#f093fb 0%,#f5576c 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">SCHACCS App 🔗</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Student portal with 12K+ downloads</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Flutter</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">12K+</span></div></div><div onclick="window.open('https://drive.google.com/file/d/1CzDfpguiAVTYj9Bkzfb3K7LrXs8beBal/view?usp=drive_link','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#a8edea 0%,#fed6e3 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Health Living App 🔗</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Wellness tracking with AI</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Flutter</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">10K+</span></div></div><div onclick="window.open('https://github.com/Bramtheking/aidetectorandroidapp.git','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#ffd200 0%,#f7971e 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">AI Detector App 🔗</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">ML models with 95% accuracy</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">React Native</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">5K+</span></div></div><div onclick="window.open('https://github.com/Bramtheking/healthtracker.git','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#ee5a6f 0%,#f093fb 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Doctor App 🔗</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Video consultations</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Flutter</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">8K+</span></div></div><div style="background:white;padding:24px;border-radius:16px;box-shadow:0 8px 16px rgba(0,0,0,0.15);position:relative;overflow:hidden;opacity:0.85"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#34a853 0%,#0f9d58 100%)"></div><div style="position:absolute;top:16px;right:16px;background:#999;color:white;padding:6px 12px;border-radius:20px;font-size:11px;font-weight:700">PRIVATE</div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">PEFRANK SACCO App</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Secure savings - $2M+ transactions</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Java</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">15K+</span></div></div><div onclick="window.open('https://play.google.com/store/apps/details?id=com.milestoneinstitute.radio','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#764ba2 0%,#667eea 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Milestone Radio App 🔗</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Android app with 10K+ downloads</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Android</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">10K+</span></div></div></div></div><div style="margin-bottom:40px"><h2 style="color:white;font-size:24px;margin:0 0 20px 0;display:flex;align-items:center;gap:10px"><span style="font-size:28px">📻</span> Radio Platforms</h2><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px"><div onclick="createWindow('kenlive')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#667eea 0%,#764ba2 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">KenLive Radio</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Community news platform</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Firebase</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Next.js</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Cloudinary</span></div></div><div onclick="createWindow('milestone')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#f5576c 0%,#f093fb 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Milestone Radio</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Student broadcasting</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Firebase</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Next.js</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Figma</span></div></div><div onclick="createWindow('newsline')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#00f2fe 0%,#4facfe 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Newsline Radio</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Journalism training</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Firebase</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Next.js</span></div></div></div></div><div style="margin-bottom:40px"><h2 style="color:white;font-size:24px;margin:0 0 20px 0;display:flex;align-items:center;gap:10px"><span style="font-size:28px">🤖</span> AI & ML</h2><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px"><div onclick="window.open('https://www.kaggle.com/code/bramwelagina/bramwel','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#20bfff 0%,#4facfe 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Loan Default Prediction 🔗</h3><p style="margin:0;font-size:14px;color:#4a5568;line-height:1.6">Top 100/10,000 - 95% accuracy</p></div><div onclick="window.open('https://www.academia.edu/124266169','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#a8e063 0%,#56ab2f 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">AI Text Detector 🔗</h3><p style="margin:0;font-size:14px;color:#4a5568;line-height:1.6">BERT model for AI vs human text</p></div></div></div><div style="margin-bottom:40px"><h2 style="color:white;font-size:24px;margin:0 0 20px 0;display:flex;align-items:center;gap:10px"><span style="font-size:28px">🎨</span> Design</h2><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px"><div onclick="window.open('https://www.figma.com/design/4kU2NKfmL5YWEijEiJO70W/Coffee-Shop-Mobile-App-Design?node-id=0-1','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#fee140 0%,#fa709a 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Coffee Shop Design 🔗</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Elegant café ordering system</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Figma</span></div></div><div onclick="window.open('https://www.figma.com/design/qhz2JiiViREHisOBP5KOYf/Online-Bike-Shopping-App?node-id=0-1','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#30cfd0 0%,#330867 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Bike Shopping Design 🔗</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">E-commerce with AR preview</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Figma</span></div></div></div></div><div style="margin-bottom:40px"><h2 style="color:white;font-size:24px;margin:0 0 20px 0;display:flex;align-items:center;gap:10px"><span style="font-size:28px">🔬</span> Research</h2><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px"><div onclick="window.open('https://www.academia.edu/124266169','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#667eea 0%,#764ba2 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Simulating Smell Device 🔗</h3><p style="margin:0;font-size:14px;color:#4a5568;line-height:1.6">Electromagnetic wave olfactory device (2024)</p></div><div onclick="window.open('https://www.academia.edu/130053956','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#f5576c 0%,#f093fb 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Hybrid Census Solution 🔗</h3><p style="margin:0;font-size:14px;color:#4a5568;line-height:1.6">96-98% coverage, 90% cost reduction (2025)</p></div><div onclick="window.open('https://www.academia.edu/130053873','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#a8edea 0%,#fed6e3 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Baby-Like AI System 🔗</h3><p style="margin:0;font-size:14px;color:#4a5568;line-height:1.6">AI that learns like a newborn (2025)</p></div></div></div></div></div>`
         },
         kenlive: {
             icon: '📻',
@@ -779,15 +1064,63 @@ function getWindowContent(type) {
             `
         },
         allotmeal: {
-            icon: '🌐',
-            title: 'AllotMeal Project',
+            icon: '🍽️',
+            title: 'AllotMeal Africa - Business Platform',
             externalUrl: 'https://allotmealafroc.com',
             html: `
                 <div style="height: 100%; display: flex; flex-direction: column; position: relative;">
                     <div class="iframe-loader" id="loader-allotmeal">Loading...</div>
-                    <iframe src="https://allotmealafroc.com" style="flex: 1; width: 100%; border: none;" title="AllotMeal" onload="setTimeout(() => { const loader = document.getElementById('loader-allotmeal'); if(loader) loader.remove(); }, 100)"></iframe>
+                    <iframe src="https://allotmealafroc.com" style="flex: 1; width: 100%; border: none;" title="AllotMeal Africa" onload="setTimeout(() => { const loader = document.getElementById('loader-allotmeal'); if(loader) loader.remove(); }, 100)"></iframe>
                 </div>
                 <script>setTimeout(() => { const loader = document.getElementById('loader-allotmeal'); if(loader) loader.remove(); }, 5000);</script>
+            `
+        },
+        newslinemedia: {
+            icon: '🤝',
+            title: 'Newsline Media - Student-Business Platform',
+            externalUrl: 'https://newslinemedia.co.ke',
+            html: `
+                <div style="height: 100%; display: flex; flex-direction: column; position: relative;">
+                    <div class="iframe-loader" id="loader-newslinemedia">Loading...</div>
+                    <iframe src="https://newslinemedia.co.ke" style="flex: 1; width: 100%; border: none;" title="Newsline Media" onload="setTimeout(() => { const loader = document.getElementById('loader-newslinemedia'); if(loader) loader.remove(); }, 100)"></iframe>
+                </div>
+                <script>setTimeout(() => { const loader = document.getElementById('loader-newslinemedia'); if(loader) loader.remove(); }, 5000);</script>
+            `
+        },
+        'kenlive-web': {
+            icon: '🔧',
+            title: 'KenLive.co.ke - Website Renovation',
+            externalUrl: 'https://www.kenlive.co.ke',
+            html: `
+                <div style="height: 100%; display: flex; flex-direction: column; position: relative;">
+                    <div class="iframe-loader" id="loader-kenlive-web">Loading...</div>
+                    <iframe src="https://www.kenlive.co.ke" style="flex: 1; width: 100%; border: none;" title="KenLive Website" onload="setTimeout(() => { const loader = document.getElementById('loader-kenlive-web'); if(loader) loader.remove(); }, 100)"></iframe>
+                </div>
+                <script>setTimeout(() => { const loader = document.getElementById('loader-kenlive-web'); if(loader) loader.remove(); }, 5000);</script>
+            `
+        },
+        'newsline-web': {
+            icon: '📰',
+            title: 'Newsline.co.ke - News Platform',
+            externalUrl: 'https://www.newsline.co.ke',
+            html: `
+                <div style="height: 100%; display: flex; flex-direction: column; position: relative;">
+                    <div class="iframe-loader" id="loader-newsline-web">Loading...</div>
+                    <iframe src="https://www.newsline.co.ke" style="flex: 1; width: 100%; border: none;" title="Newsline Website" onload="setTimeout(() => { const loader = document.getElementById('loader-newsline-web'); if(loader) loader.remove(); }, 100)"></iframe>
+                </div>
+                <script>setTimeout(() => { const loader = document.getElementById('loader-newsline-web'); if(loader) loader.remove(); }, 5000);</script>
+            `
+        },
+        'bigstar-web': {
+            icon: '⭐',
+            title: 'BigStarNews.co.ke - News Platform',
+            externalUrl: 'https://www.bigstarnews.co.ke',
+            html: `
+                <div style="height: 100%; display: flex; flex-direction: column; position: relative;">
+                    <div class="iframe-loader" id="loader-bigstar-web">Loading...</div>
+                    <iframe src="https://www.bigstarnews.co.ke" style="flex: 1; width: 100%; border: none;" title="BigStar News" onload="setTimeout(() => { const loader = document.getElementById('loader-bigstar-web'); if(loader) loader.remove(); }, 100)"></iframe>
+                </div>
+                <script>setTimeout(() => { const loader = document.getElementById('loader-bigstar-web'); if(loader) loader.remove(); }, 5000);</script>
             `
         },
 
@@ -891,6 +1224,101 @@ function getWindowContent(type) {
                 </div>
             `
         },
+        experience: {
+            icon: '<img src="icons/experience.png" style="width:18px;height:18px;">',
+            title: 'Professional Experience',
+            html: `
+                <div style="padding: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100%; overflow-y: auto;">
+                    <h1 style="color: white; font-size: 32px; margin-bottom: 30px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">Professional Experience</h1>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 24px;">
+                        <!-- Full-Stack Web Developer -->
+                        <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                            <div style="display: flex; justify-content: between; align-items: start; margin-bottom: 12px;">
+                                <div>
+                                    <h2 style="color: #1a202c; font-size: 22px; margin: 0 0 4px 0;">Full-Stack Web Developer</h2>
+                                    <p style="color: #667eea; font-size: 16px; font-style: italic; margin: 0 0 8px 0;">AllotMeal Afroc Platform</p>
+                                    <p style="color: #718096; font-size: 14px; margin: 0;">2023 - Present</p>
+                                </div>
+                            </div>
+                            <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin: 16px 0 0 0;">
+                                Led redesign and deployment of allotmealafroc.netlify.app connecting 1000+ hotels, businesses, and stakeholders through listings, networking, and payment services. Built with Next.js, MongoDB, and Netlify, processing thousands of bookings.
+                            </p>
+                        </div>
+                        
+                        <!-- Mobile App Developer -->
+                        <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                            <div style="display: flex; justify-content: between; align-items: start; margin-bottom: 12px;">
+                                <div>
+                                    <h2 style="color: #1a202c; font-size: 22px; margin: 0 0 4px 0;">Mobile App Developer</h2>
+                                    <p style="color: #667eea; font-size: 16px; font-style: italic; margin: 0 0 8px 0;">SCHACCS & Educational Institutions</p>
+                                    <p style="color: #718096; font-size: 14px; margin: 0;">2024 - 2025</p>
+                                </div>
+                            </div>
+                            <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin: 16px 0 0 0;">
+                                Developed parent-student portal with 10,000+ downloads featuring fee overview, academic results, attendance tracking, and event notifications. Built using Flutter, Firebase, and SQLite for cross-platform compatibility.
+                            </p>
+                        </div>
+                        
+                        <!-- Android/iOS Developer -->
+                        <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                            <div style="display: flex; justify-content: between; align-items: start; margin-bottom: 12px;">
+                                <div>
+                                    <h2 style="color: #1a202c; font-size: 22px; margin: 0 0 4px 0;">Android/iOS Developer</h2>
+                                    <p style="color: #667eea; font-size: 16px; font-style: italic; margin: 0 0 8px 0;">Various Clients</p>
+                                    <p style="color: #718096; font-size: 14px; margin: 0;">2022 - 2025</p>
+                                </div>
+                            </div>
+                            <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin: 16px 0 0 0;">
+                                Developed cross-platform mobile applications integrating RESTful APIs and optimized UI/UX workflows. Built secure SACCO app processing $2M+ in transactions with zero security incidents using Java (Android) and Swift (iOS).
+                            </p>
+                        </div>
+                        
+                        <!-- CRM Web Developer -->
+                        <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                            <div style="display: flex; justify-content: between; align-items: start; margin-bottom: 12px;">
+                                <div>
+                                    <h2 style="color: #1a202c; font-size: 22px; margin: 0 0 4px 0;">CRM Web Developer</h2>
+                                    <p style="color: #667eea; font-size: 16px; font-style: italic; margin: 0 0 8px 0;">Multiple Organizations</p>
+                                    <p style="color: #718096; font-size: 14px; margin: 0;">Jan 2023 - Dec 2023</p>
+                                </div>
+                            </div>
+                            <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin: 16px 0 0 0;">
+                                Built secure, responsive CRM modules using PHP, Laravel, and MySQL. Collaborated in Agile teams to deliver client requirements on schedule, improving operational efficiency by 60%.
+                            </p>
+                        </div>
+                        
+                        <!-- Newsline Media -->
+                        <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                            <div style="display: flex; justify-content: between; align-items: start; margin-bottom: 12px;">
+                                <div>
+                                    <h2 style="color: #1a202c; font-size: 22px; margin: 0 0 4px 0;">Full-Stack Developer</h2>
+                                    <p style="color: #667eea; font-size: 16px; font-style: italic; margin: 0 0 8px 0;">Newsline Media</p>
+                                    <p style="color: #718096; font-size: 14px; margin: 0;">Aug 2024 - Dec 2025</p>
+                                </div>
+                            </div>
+                            <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin: 16px 0 0 0;">
+                                Developed platform connecting businesses with students seeking attachments and training opportunities across Kenya. Built comprehensive networking system bridging education and industry. Additionally, trained attachés in various IT disciplines including web development, Android app development, AI/ML, cybersecurity, networking, and database management.
+                            </p>
+                        </div>
+                        
+                        <!-- MediaCrest -->
+                        <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                            <div style="display: flex; justify-content: between; align-items: start; margin-bottom: 12px;">
+                                <div>
+                                    <h2 style="color: #1a202c; font-size: 22px; margin: 0 0 4px 0;">Cybersecurity Trainer</h2>
+                                    <p style="color: #667eea; font-size: 16px; font-style: italic; margin: 0 0 8px 0;">MediaCrest</p>
+                                    <p style="color: #718096; font-size: 14px; margin: 0;">2024</p>
+                                </div>
+                            </div>
+                            <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin: 16px 0 0 0;">
+                                Trained professionals in cybersecurity best practices, threat detection, and security protocols. Developed training materials and conducted hands-on workshops on network security and ethical hacking.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            `
+        },
         spotify: {
             icon: '🎵',
             title: 'Spotify Player',
@@ -977,6 +1405,152 @@ function getWindowContent(type) {
                     <audio id="spotify-audio"></audio>
                 </div>
             `
+        },
+        technologies: {
+            icon: '<img src="icons/technology.png" style="width:18px;height:18px;">',
+            title: 'Technologies & Skills',
+            html: `<div style="padding:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);height:100%;overflow-y:auto">
+    <div style="padding:40px 40px 30px">
+        <h1 style="color:white;font-size:36px;margin:0 0 10px 0;text-shadow:2px 2px 4px rgba(0,0,0,0.3);font-weight:bold">Technologies & Skills</h1>
+        <p style="color:rgba(255,255,255,0.95);font-size:16px;margin:0">Tools and technologies I work with</p>
+    </div>
+    
+    <div style="padding:0 40px 40px">
+        <!-- Programming Languages -->
+        <div style="margin-bottom:40px">
+            <h2 style="color:white;font-size:24px;margin:0 0 20px 0;font-weight:600">Programming Languages</h2>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px">
+                <div style="background:white;padding:20px;border-radius:12px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:transform 0.3s" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <img src="https://cdn.simpleicons.org/oracle/F80000" style="width:48px;height:48px;margin-bottom:12px" alt="Java">
+                    <h3 style="margin:0 0 8px 0;color:#1a202c;font-size:18px;font-weight:bold">Java</h3>
+                    <p style="margin:0;font-size:13px;color:#666">Android Development</p>
+                </div>
+                <div style="background:white;padding:20px;border-radius:12px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:transform 0.3s" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <img src="https://cdn.simpleicons.org/python/3776AB" style="width:48px;height:48px;margin-bottom:12px" alt="Python">
+                    <h3 style="margin:0 0 8px 0;color:#1a202c;font-size:18px;font-weight:bold">Python</h3>
+                    <p style="margin:0;font-size:13px;color:#666">AI/ML & Backend</p>
+                </div>
+                <div style="background:white;padding:20px;border-radius:12px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:transform 0.3s" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <img src="https://cdn.simpleicons.org/javascript/F7DF1E" style="width:48px;height:48px;margin-bottom:12px;background:#000;padding:4px;border-radius:8px" alt="JavaScript">
+                    <h3 style="margin:0 0 8px 0;color:#1a202c;font-size:18px;font-weight:bold">JavaScript</h3>
+                    <p style="margin:0;font-size:13px;color:#666">Vanilla JS & ES6+</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Frameworks & Libraries -->
+        <div style="margin-bottom:40px">
+            <h2 style="color:white;font-size:24px;margin:0 0 20px 0;font-weight:600">Frameworks & Libraries</h2>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px">
+                <div style="background:white;padding:20px;border-radius:12px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:transform 0.3s" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <img src="https://cdn.simpleicons.org/react/61DAFB" style="width:48px;height:48px;margin-bottom:12px" alt="React">
+                    <h3 style="margin:0 0 8px 0;color:#1a202c;font-size:18px;font-weight:bold">React.js</h3>
+                    <p style="margin:0;font-size:13px;color:#666">Web Applications</p>
+                </div>
+                <div style="background:white;padding:20px;border-radius:12px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:transform 0.3s" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <img src="https://cdn.simpleicons.org/nextdotjs/000000" style="width:48px;height:48px;margin-bottom:12px" alt="Next.js">
+                    <h3 style="margin:0 0 8px 0;color:#1a202c;font-size:18px;font-weight:bold">Next.js</h3>
+                    <p style="margin:0;font-size:13px;color:#666">Full-Stack React</p>
+                </div>
+                <div style="background:white;padding:20px;border-radius:12px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:transform 0.3s" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <img src="https://cdn.simpleicons.org/flutter/02569B" style="width:48px;height:48px;margin-bottom:12px" alt="Flutter">
+                    <h3 style="margin:0 0 8px 0;color:#1a202c;font-size:18px;font-weight:bold">Flutter</h3>
+                    <p style="margin:0;font-size:13px;color:#666">Cross-Platform Mobile</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mobile Development -->
+        <div style="margin-bottom:40px">
+            <h2 style="color:white;font-size:24px;margin:0 0 20px 0;font-weight:600">Mobile Development</h2>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px">
+                <div style="background:white;padding:20px;border-radius:12px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:transform 0.3s" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <img src="https://cdn.simpleicons.org/android/3DDC84" style="width:48px;height:48px;margin-bottom:12px" alt="Android">
+                    <h3 style="margin:0 0 8px 0;color:#1a202c;font-size:18px;font-weight:bold">Android</h3>
+                    <p style="margin:0;font-size:13px;color:#666">Native Development</p>
+                </div>
+                <div style="background:white;padding:20px;border-radius:12px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:transform 0.3s" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <img src="https://cdn.simpleicons.org/androidstudio/3DDC84" style="width:48px;height:48px;margin-bottom:12px" alt="Android Studio">
+                    <h3 style="margin:0 0 8px 0;color:#1a202c;font-size:18px;font-weight:bold">Android Studio</h3>
+                    <p style="margin:0;font-size:13px;color:#666">IDE & Tools</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Web Technologies -->
+        <div style="margin-bottom:40px">
+            <h2 style="color:white;font-size:24px;margin:0 0 20px 0;font-weight:600">Web Technologies</h2>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px">
+                <div style="background:white;padding:20px;border-radius:12px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:transform 0.3s" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <img src="https://cdn.simpleicons.org/html5/E34F26" style="width:48px;height:48px;margin-bottom:12px" alt="HTML5">
+                    <h3 style="margin:0 0 8px 0;color:#1a202c;font-size:18px;font-weight:bold">Web Development</h3>
+                    <p style="margin:0;font-size:13px;color:#666">HTML, CSS, JavaScript</p>
+                </div>
+                <div style="background:white;padding:20px;border-radius:12px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:transform 0.3s" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <img src="https://cdn.simpleicons.org/firebase/FFCA28" style="width:48px;height:48px;margin-bottom:12px" alt="Firebase">
+                    <h3 style="margin:0 0 8px 0;color:#1a202c;font-size:18px;font-weight:bold">Firebase</h3>
+                    <p style="margin:0;font-size:13px;color:#666">Backend Services</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Design Tools -->
+        <div style="margin-bottom:40px">
+            <h2 style="color:white;font-size:24px;margin:0 0 20px 0;font-weight:600">Design Tools</h2>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px">
+                <div style="background:white;padding:20px;border-radius:12px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:transform 0.3s" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <img src="https://cdn.simpleicons.org/figma/F24E1E" style="width:48px;height:48px;margin-bottom:12px" alt="Figma">
+                    <h3 style="margin:0 0 8px 0;color:#1a202c;font-size:18px;font-weight:bold">Figma</h3>
+                    <p style="margin:0;font-size:13px;color:#666">UI/UX Design</p>
+                </div>
+                <div style="background:white;padding:20px;border-radius:12px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:transform 0.3s" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <img src="https://cdn.simpleicons.org/adobephotoshop/31A8FF" style="width:48px;height:48px;margin-bottom:12px" alt="Photoshop">
+                    <h3 style="margin:0 0 8px 0;color:#1a202c;font-size:18px;font-weight:bold">Adobe Photoshop</h3>
+                    <p style="margin:0;font-size:13px;color:#666">Photo Editing</p>
+                </div>
+                <div style="background:white;padding:20px;border-radius:12px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:transform 0.3s" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <img src="https://cdn.simpleicons.org/canva/00C4CC" style="width:48px;height:48px;margin-bottom:12px" alt="Canva">
+                    <h3 style="margin:0 0 8px 0;color:#1a202c;font-size:18px;font-weight:bold">Canva</h3>
+                    <p style="margin:0;font-size:13px;color:#666">Graphic Design</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- AI & Machine Learning -->
+        <div style="margin-bottom:40px">
+            <h2 style="color:white;font-size:24px;margin:0 0 20px 0;font-weight:600">AI & Machine Learning</h2>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px">
+                <div style="background:white;padding:20px;border-radius:12px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:transform 0.3s" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <img src="https://cdn.simpleicons.org/tensorflow/FF6F00" style="width:48px;height:48px;margin-bottom:12px" alt="TensorFlow">
+                    <h3 style="margin:0 0 8px 0;color:#1a202c;font-size:18px;font-weight:bold">TensorFlow</h3>
+                    <p style="margin:0;font-size:13px;color:#666">Deep Learning</p>
+                </div>
+                <div style="background:white;padding:20px;border-radius:12px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:transform 0.3s" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <img src="https://cdn.simpleicons.org/scikitlearn/F7931E" style="width:48px;height:48px;margin-bottom:12px" alt="Scikit-learn">
+                    <h3 style="margin:0 0 8px 0;color:#1a202c;font-size:18px;font-weight:bold">Scikit-learn</h3>
+                    <p style="margin:0;font-size:13px;color:#666">Machine Learning</p>
+                </div>
+                <div style="background:white;padding:20px;border-radius:12px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:transform 0.3s" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <img src="https://cdn.simpleicons.org/pandas/150458" style="width:48px;height:48px;margin-bottom:12px" alt="Pandas">
+                    <h3 style="margin:0 0 8px 0;color:#1a202c;font-size:18px;font-weight:bold">Data Science</h3>
+                    <p style="margin:0;font-size:13px;color:#666">Analysis & Modeling</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Productivity Tools -->
+        <div style="margin-bottom:40px">
+            <h2 style="color:white;font-size:24px;margin:0 0 20px 0;font-weight:600">Productivity Tools</h2>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px">
+                <div style="background:white;padding:20px;border-radius:12px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:transform 0.3s" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <img src="https://cdn.simpleicons.org/microsoftoffice/D83B01" style="width:48px;height:48px;margin-bottom:12px" alt="MS Office">
+                    <h3 style="margin:0 0 8px 0;color:#1a202c;font-size:18px;font-weight:bold">MS Office</h3>
+                    <p style="margin:0;font-size:13px;color:#666">Word, Excel, PowerPoint</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>`
         }
     };
     
@@ -992,34 +1566,43 @@ function setupWindowControls(window) {
     const helpMenu = window.querySelector('#help-menu');
     const externalBtn = window.querySelector('.external-link-btn');
     
-    // Dragging - fixed to stop properly
-    titlebar.onmousedown = function(e) {
+    // Dragging - with touch support
+    function startDrag(clientX, clientY, target) {
         // Don't drag if clicking buttons
-        if (e.target.classList.contains('window-control-btn')) return;
+        if (target.classList.contains('window-control-btn') || target.classList.contains('external-link-btn')) return false;
         
         // If maximized, un-maximize on drag
         if (window.classList.contains('maximized')) {
             window.classList.remove('maximized');
-            // Center the window under cursor
+            // Center the window under cursor/touch
             const rect = window.getBoundingClientRect();
-            window.style.left = (e.clientX - rect.width / 2) + 'px';
+            window.style.left = (clientX - rect.width / 2) + 'px';
             window.style.top = '50px';
         }
         
         focusWindow(window);
-        e.preventDefault();
         
-        let shiftX = e.clientX - window.getBoundingClientRect().left;
-        let shiftY = e.clientY - window.getBoundingClientRect().top;
+        let shiftX = clientX - window.getBoundingClientRect().left;
+        let shiftY = clientY - window.getBoundingClientRect().top;
         
         function moveAt(pageX, pageY) {
             window.style.left = pageX - shiftX + 'px';
             window.style.top = pageY - shiftY + 'px';
         }
         
+        return { moveAt, shiftX, shiftY };
+    }
+    
+    // Mouse dragging
+    titlebar.onmousedown = function(e) {
+        const drag = startDrag(e.clientX, e.clientY, e.target);
+        if (!drag) return;
+        
+        e.preventDefault();
+        
         function onMouseMove(event) {
             event.preventDefault();
-            moveAt(event.clientX, event.clientY);
+            drag.moveAt(event.clientX, event.clientY);
         }
         
         function onMouseUp() {
@@ -1029,6 +1612,46 @@ function setupWindowControls(window) {
         
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
+    };
+    
+    // Touch dragging with double-tap to maximize
+    let lastTapTime = 0;
+    let hasMoved = false;
+    
+    titlebar.ontouchstart = function(e) {
+        const touch = e.touches[0];
+        const currentTime = new Date().getTime();
+        const tapGap = currentTime - lastTapTime;
+        
+        // Check for double-tap (within 300ms)
+        if (tapGap < 300 && tapGap > 0) {
+            // Double-tap detected - toggle maximize
+            e.preventDefault();
+            window.classList.toggle('maximized');
+            lastTapTime = 0; // Reset to prevent triple-tap
+            return;
+        }
+        
+        lastTapTime = currentTime;
+        hasMoved = false;
+        
+        const drag = startDrag(touch.clientX, touch.clientY, e.target);
+        if (!drag) return;
+        
+        function onTouchMove(event) {
+            hasMoved = true;
+            event.preventDefault();
+            const touch = event.touches[0];
+            drag.moveAt(touch.clientX, touch.clientY);
+        }
+        
+        function onTouchEnd() {
+            document.removeEventListener('touchmove', onTouchMove);
+            document.removeEventListener('touchend', onTouchEnd);
+        }
+        
+        document.addEventListener('touchmove', onTouchMove, { passive: false });
+        document.addEventListener('touchend', onTouchEnd);
     };
     
     titlebar.ondragstart = function() {
@@ -1193,6 +1816,46 @@ function setupWindowControls(window) {
     window.addEventListener('mousedown', () => {
         focusWindow(window);
     });
+    
+    // Pinch-to-resize gesture for mobile
+    let initialDistance = 0;
+    let initialWidth = 0;
+    let initialHeight = 0;
+    
+    window.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) {
+            // Two fingers detected - start pinch gesture
+            e.preventDefault();
+            const touch1 = e.touches[0];
+            const touch2 = e.touches[1];
+            initialDistance = Math.hypot(
+                touch2.clientX - touch1.clientX,
+                touch2.clientY - touch1.clientY
+            );
+            initialWidth = window.offsetWidth;
+            initialHeight = window.offsetHeight;
+        }
+    }, { passive: false });
+    
+    window.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 2 && !window.classList.contains('maximized')) {
+            // Pinch gesture in progress
+            e.preventDefault();
+            const touch1 = e.touches[0];
+            const touch2 = e.touches[1];
+            const currentDistance = Math.hypot(
+                touch2.clientX - touch1.clientX,
+                touch2.clientY - touch1.clientY
+            );
+            
+            const scale = currentDistance / initialDistance;
+            const newWidth = Math.max(400, Math.min(window.innerWidth, initialWidth * scale));
+            const newHeight = Math.max(300, Math.min(window.innerHeight - 40, initialHeight * scale));
+            
+            window.style.width = newWidth + 'px';
+            window.style.height = newHeight + 'px';
+        }
+    }, { passive: false });
 }
 
 function showContactDialog() {
@@ -1486,28 +2149,23 @@ function initSpotifyPlayer() {
 }
 
 
-// Handle tab visibility to prevent freezing when switching tabs
+// Handle tab visibility - consolidated handler
 document.addEventListener('visibilitychange', function() {
+    const audio = document.getElementById('spotify-audio');
+    
     if (document.hidden) {
-        // Tab is hidden - pause animations
-        document.body.classList.add('tab-hidden');
-        
-        // Pause audio if playing
-        const spotifyAudio = document.getElementById('spotify-audio');
-        if (spotifyAudio && !spotifyAudio.paused) {
-            spotifyAudio.dataset.wasPlaying = 'true';
+        // Tab is hidden - pause audio only
+        if (audio && !audio.paused) {
+            audio.dataset.wasPlaying = 'true';
         }
     } else {
-        // Tab is visible again - resume smoothly
-        document.body.classList.remove('tab-hidden');
-        
-        const spotifyAudio = document.getElementById('spotify-audio');
-        if (spotifyAudio && spotifyAudio.dataset.wasPlaying === 'true') {
-            delete spotifyAudio.dataset.wasPlaying;
+        // Tab is visible again - resume immediately
+        if (audio && audio.dataset.wasPlaying === 'true') {
+        // Tab is  audio.dataset.wasPlay smoothly
         }
         
-        // Update clock immediately
-        if (typeof updateClock === 'function') {
+        // Update clocudio = iately
+        if (typeifyAudio && ck === 'function') {
             updateClock();
         }
     }
@@ -1548,65 +2206,8 @@ window.addEventListener('blur', function() {
 });
 
 
-// Performance optimization - Handle tab visibility
+// Performance optimization - Tab visibility tracking (no blocking)
 let isTabVisible = !document.hidden;
-let progressUpdateInterval = null;
-
-document.addEventListener('visibilitychange', function() {
-    const audio = document.getElementById('spotify-audio');
-    isTabVisible = !document.hidden;
-    
-    if (document.hidden) {
-        // Tab is hidden - pause heavy operations
-        if (audio && !audio.paused) {
-            audio.dataset.wasPlaying = 'true';
-        }
-        // Stop progress bar updates
-        if (progressUpdateInterval) {
-            clearInterval(progressUpdateInterval);
-            progressUpdateInterval = null;
-        }
-    } else {
-        // Tab is visible again - resume immediately
-        if (audio && audio.dataset.wasPlaying === 'true') {
-            delete audio.dataset.wasPlaying;
-        }
-        // Use requestAnimationFrame for immediate response
-        requestAnimationFrame(() => {
-            document.body.style.display = 'block';
-        });
-    }
-});
-
-// Optimize animations when tab is not visible
-let animationsPaused = false;
-let pauseStyleElement = null;
-
-document.addEventListener('visibilitychange', function() {
-    if (document.hidden) {
-        animationsPaused = true;
-        document.body.classList.add('tab-hidden');
-        // Pause all CSS animations
-        if (!pauseStyleElement) {
-            pauseStyleElement = document.createElement('style');
-            pauseStyleElement.id = 'pause-animations';
-            pauseStyleElement.textContent = '* { animation-play-state: paused !important; transition: none !important; }';
-            document.head.appendChild(pauseStyleElement);
-        }
-    } else {
-        animationsPaused = false;
-        document.body.classList.remove('tab-hidden');
-        // Resume all CSS animations immediately
-        if (pauseStyleElement) {
-            pauseStyleElement.remove();
-            pauseStyleElement = null;
-        }
-        // Use RAF for instant smooth resume
-        requestAnimationFrame(() => {
-            document.body.style.willChange = 'auto';
-        });
-    }
-});
 
 
 // Performance: Use passive event listeners for scroll events
@@ -1629,3 +2230,77 @@ window.addEventListener('resize', function() {
         checkMobileOrientation();
     }, 250);
 }, { passive: true });
+
+// Hire Me Notification
+let notificationInterval = null;
+
+function showHireMeNotification() {
+    const userName = localStorage.getItem('portfolio_name') || 'Bramwel Agina';
+    const userEmail = localStorage.getItem('portfolio_email') || 'bramwelagina@example.com';
+    const userPhone = localStorage.getItem('portfolio_phone') || '+254 XXX XXX XXX';
+    
+    // Don't show if one already exists
+    if (document.querySelector('.xp-notification')) {
+        return;
+    }
+    
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = 'xp-notification';
+    notification.innerHTML = `
+        <div class="xp-notification-header">
+            <div class="xp-notification-title">
+                <span>💼</span>
+                <span>Available for Hire!</span>
+            </div>
+            <button class="xp-notification-close" onclick="closeHireMeNotification()">×</button>
+        </div>
+        <div class="xp-notification-body">
+            <div class="xp-notification-message">
+                <strong>${userName}</strong> is available for freelance projects and full-time opportunities!
+            </div>
+            <button class="xp-notification-button" onclick="showContactFromNotification()">
+                📧 Get in Touch
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Trigger slide-in animation
+    setTimeout(() => {
+        notification.classList.add('show');
+    }, 100);
+    
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+        closeHireMeNotification();
+    }, 5000);
+}
+
+function startNotificationLoop() {
+    // Show first notification after 15 seconds
+    setTimeout(() => {
+        showHireMeNotification();
+        
+        // Then repeat every 50 seconds
+        notificationInterval = setInterval(() => {
+            showHireMeNotification();
+        }, 50000);
+    }, 15000);
+}
+
+function closeHireMeNotification() {
+    const notification = document.querySelector('.xp-notification');
+    if (notification) {
+        notification.classList.remove('show');
+        setTimeout(() => {
+            notification.remove();
+        }, 500);
+    }
+}
+
+function showContactFromNotification() {
+    closeHireMeNotification();
+    createWindow('contact');
+}

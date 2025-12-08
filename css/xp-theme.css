@@ -546,7 +546,7 @@ body {
 .desktop-icons {
     padding: 20px;
     display: grid;
-    grid-template-columns: repeat(3, 90px);
+    grid-template-columns: repeat(4, 90px);
     grid-auto-rows: 90px;
     grid-auto-flow: row;
     gap: 20px;
@@ -585,8 +585,11 @@ body {
     cursor: move;
 }
 
-.desktop-icon:hover {
-    background: rgba(0, 0, 255, 0.1);
+/* Only show hover on non-touch devices */
+@media (hover: hover) and (pointer: fine) {
+    .desktop-icon:hover {
+        background: rgba(0, 0, 255, 0.1);
+    }
 }
 
 .desktop-icon.selected {
@@ -778,6 +781,7 @@ body {
     background: #fff;
     padding: 10px 0;
     border-right: 1px solid #ccc;
+    overflow: visible;
 }
 
 .start-menu-right {
@@ -843,7 +847,7 @@ body {
 /* Submenu */
 .submenu {
     position: fixed;
-    left: 385px;
+    left: 390px;
     bottom: 100px;
     width: 220px;
     max-height: 400px;
@@ -852,7 +856,7 @@ body {
     border: 2px solid;
     border-color: #5a9efb #003c74 #003c74 #5a9efb;
     box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.5);
-    z-index: 10000;
+    z-index: 10001;
     padding: 5px 0;
     opacity: 0;
     visibility: hidden;
@@ -1234,44 +1238,244 @@ body.tab-hidden {
 }
 
 
-/* Mobile Responsive Styles */
-@media (max-width: 768px) {
-    /* Adjust submenu position for smaller screens */
-    .submenu {
-        left: 230px;
-        width: 180px;
-        font-size: 11px;
-    }
-    
-    .submenu .start-menu-item {
-        padding: 6px 8px;
-    }
-    
-    .submenu .menu-icon-img {
-        width: 24px;
-        height: 24px;
-    }
-    
-    /* Adjust desktop icons for mobile */
-    .desktop-icons {
-        grid-template-columns: repeat(2, 90px);
-    }
-    
-    /* Adjust start menu width */
-    .start-menu {
-        width: 320px;
-    }
+/* Mobile Responsive Styles - Force on all mobile devices */
+@media (max-width: 768px), (max-height: 768px) and (orientation: landscape) {
 }
 
 @media (max-width: 480px) {
-    /* Further adjustments for very small screens */
-    .submenu {
-        left: 180px;
-        width: 150px;
-        font-size: 10px;
-    }
+}
+
+/* Windows XP Notification */
+.xp-notification {
+    position: fixed;
+    bottom: 50px;
+    right: -350px;
+    width: 320px;
+    background: linear-gradient(180deg, #0054e3 0%, #0041b8 100%);
+    border: 2px solid #0054e3;
+    border-radius: 8px 8px 0 0;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    z-index: 10000;
+    transition: right 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    font-family: Tahoma, sans-serif;
+}
+
+.xp-notification.show {
+    right: 10px;
+}
+
+.xp-notification-header {
+    background: linear-gradient(180deg, #0054e3 0%, #0041b8 100%);
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #003d99;
+}
+
+.xp-notification-title {
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.xp-notification-close {
+    background: #ff4444;
+    border: 1px solid #cc0000;
+    color: white;
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 18px;
+    text-align: center;
+    transition: all 0.2s;
+}
+
+.xp-notification-close:hover {
+    background: #ff6666;
+}
+
+.xp-notification-body {
+    background: #ece9d8;
+    padding: 16px;
+    color: #000;
+}
+
+.xp-notification-message {
+    font-size: 13px;
+    margin-bottom: 12px;
+    line-height: 1.5;
+}
+
+.xp-notification-button {
+    background: linear-gradient(180deg, #fff 0%, #e0e0e0 100%);
+    border: 1px solid #003c74;
+    padding: 6px 16px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: bold;
+    color: #000;
+    transition: all 0.2s;
+    width: 100%;
+    text-align: center;
+}
+
+.xp-notification-button:hover {
+    background: linear-gradient(180deg, #e0f3ff 0%, #b3d9ff 100%);
+}
+
+.xp-notification-button:active {
+    background: linear-gradient(180deg, #b3d9ff 0%, #e0f3ff 100%);
+}
+
+/* Enhanced tooltip for menu items */
+.start-menu-item[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-left: 10px;
+    background: #ffffcc;
+    border: 1px solid #000;
+    padding: 4px 8px;
+    font-size: 11px;
+    white-space: nowrap;
+    z-index: 10001;
+    pointer-events: none;
+    box-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.start-menu-item {
+    position: relative;
+}
+
+
+/* CRITICAL MOBILE FIXES - MUST OVERRIDE EVERYTHING */
+@media screen and (max-width: 768px) {
     
     .start-menu {
-        width: 280px;
+        width: 96vw !important;
+        max-width: 96vw !important;
+        left: 2vw !important;
+        bottom: 45px !important;
+        max-height: 85vh !important;
+        overflow: visible !important;
+    }
+    
+    .start-menu-body {
+        flex-direction: column !important;
+        overflow: visible !important;
+        max-height: none !important;
+    }
+    
+    .start-menu-left {
+        width: 100% !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+    
+    .start-menu-right {
+        width: 100% !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
+@media screen and (max-width: 480px) {
+}
+
+
+/* Force mobile scrolling behavior */
+@media (hover: none) and (pointer: coarse) {
+    .desktop-icons,
+    .start-menu-left,
+    .start-menu-body {
+        overflow-y: scroll !important;
+        -webkit-overflow-scrolling: touch !important;
+        overscroll-behavior: contain !important;
+    }
+    
+    .desktop {
+        touch-action: pan-y !important;
+    }
+}
+
+
+/* Fix icon selection/hover on mobile */
+@media screen and (max-width: 768px) {
+    .desktop-icon:hover,
+    .desktop-icon:active,
+    .desktop-icon:focus {
+        background: transparent !important;
+        outline: none !important;
+    }
+    
+    .desktop-icon.selected {
+        background: rgba(0, 84, 227, 0.3) !important;
+        border: 1px solid rgba(0, 84, 227, 0.5) !important;
+    }
+    
+    /* Mobile menu close button - show on mobile only */
+    .mobile-menu-close {
+        display: flex !important;
+        position: absolute !important;
+        width: 32px !important;
+        height: 32px !important;
+        font-size: 28px !important;
+        right: 8px !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        color: white !important;
+        cursor: pointer !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 4px !important;
+        background: rgba(255, 68, 68, 0.8) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        line-height: 1 !important;
+        padding: 0 !important;
+    }
+    
+    .mobile-menu-close:hover {
+        background: rgba(255, 68, 68, 1) !important;
+    }
+    
+    .mobile-menu-close:active {
+        background: rgba(200, 50, 50, 1) !important;
+    }
+}
+
+
+/* Ultra compact mobile menu - fit everything */
+@media screen and (max-width: 768px) {
+    .start-menu {
+        max-height: 82vh !important;
+    }
+    
+    .start-menu-body {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 0 !important;
+    }
+    
+    .start-menu-left,
+    .start-menu-right {
+        flex-shrink: 1 !important;
+        min-height: 0 !important;
+    }
+    
+    /* Hide subtitles on very small screens to save space */
+    .menu-subtitle {
+        display: none !important;
+    }
+    
+    .start-menu-item span {
+        font-size: 11px !important;
     }
 }
