@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+Allow: /css/
+Allow: /js/
+Allow: /images/
+Allow: /resume.pdf
+
+Sitemap: https://bramwelagina.com/sitemap.xml
+
+# Optimize crawling
+Crawl-delay: 0
+
+# Block unnecessary files
+Disallow: /config.js
+Disallow: /start-server.bat

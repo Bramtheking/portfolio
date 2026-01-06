@@ -3,6 +3,78 @@
 // Check for mobile and orientation
 let hasInitialized = false;
 let currentScreen = 'boot'; // Track which screen is active
+let animationsPaused = false;
+let pageWasHidden = false;
+
+// Prevent white screen and optimize performance when tab is not visible
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        // Page is hidden - pause animations
+        pageWasHidden = true;
+        animationsPaused = true;
+        document.body.style.animationPlayState = 'paused';
+        
+        // Pause all animations
+        const allElements = document.querySelectorAll('*');
+        allElements.forEach(el => {
+            if (el.style.animationPlayState !== undefined) {
+                el.style.animationPlayState = 'paused';
+            }
+        });
+    } else {
+        // Page is visible again - restore immediately
+        if (pageWasHidden) {
+            // Force immediate repaint to prevent white screen
+            document.body.style.display = 'none';
+            document.body.offsetHeight; // Force reflow
+            document.body.style.display = '';
+            
+            // Resume animations smoothly
+            requestAnimationFrame(() => {
+                document.body.style.animationPlayState = 'running';
+                
+                const allElements = document.querySelectorAll('*');
+                allElements.forEach(el => {
+                    if (el.style.animationPlayState !== undefined) {
+                        el.style.animationPlayState = 'running';
+                    }
+                });
+                
+                animationsPaused = false;
+                pageWasHidden = false;
+            });
+        }
+    }
+});
+
+// Handle page focus/blur for additional stability
+window.addEventListener('focus', () => {
+    // Ensure page is visible when focused
+    if (document.body.style.display === 'none') {
+        document.body.style.display = '';
+    }
+    
+    // Force a single clean repaint
+    requestAnimationFrame(() => {
+        document.body.offsetHeight;
+    });
+});
+
+// Prevent layout thrashing
+window.addEventListener('blur', () => {
+    // Save current state when losing focus
+    pageWasHidden = true;
+});
+
+// Handle page show/hide events (for back/forward navigation)
+window.addEventListener('pageshow', (event) => {
+    if (event.persisted) {
+        // Page was restored from cache - force refresh
+        document.body.style.display = 'none';
+        document.body.offsetHeight;
+        document.body.style.display = '';
+    }
+});
 
 function checkMobileOrientation() {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -42,17 +114,6 @@ function checkMobileOrientation() {
     }
 }
 
-// Prevent issues when page becomes visible again
-document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) {
-        // Page is visible again, ensure desktop is shown if it should be
-        const desktop = document.getElementById('desktop');
-        if (!desktop.classList.contains('hidden')) {
-            desktop.style.display = 'block';
-        }
-    }
-});
-
 // Boot sequence
 document.addEventListener('DOMContentLoaded', () => {
     checkMobileOrientation();
@@ -77,7 +138,7 @@ function initializePortfolio() {
             document.getElementById('login-screen').classList.remove('hidden');
             document.getElementById('login-screen').style.display = 'flex';
             currentScreen = 'login';
-        }, 3000);
+        }, 1500);
     }
     
     // Login screen click - go to welcome screen
@@ -89,12 +150,9 @@ function initializePortfolio() {
         
         // Play startup sound
         const startupSound = document.getElementById('startup-sound');
-        if (startupSound) {
-            startupSound.play().catch(err => console.log('Audio play failed:', err));
-        }
         
-        // After 3 seconds, go to desktop
-        setTimeout(() => {
+        // Function to transition to desktop
+        const goToDesktop = () => {
             document.getElementById('welcome-screen').classList.add('hidden');
             document.getElementById('desktop').classList.remove('hidden');
             document.getElementById('desktop').style.display = 'block';
@@ -125,21 +183,27 @@ function initializePortfolio() {
                     }
                 }, 100);
             }
-            // Use more efficient clock update
-            let lastClockUpdate = Date.now();
-            function clockLoop() {
-                const now = Date.now();
-                if (now - lastClockUpdate >= 1000) {
-                    updateClock();
-                    lastClockUpdate = now;
-                }
-                requestAnimationFrame(clockLoop);
-            }
-            clockLoop();
+            // Update clock every second
+            updateClock();
+            setInterval(updateClock, 1000);
             
             // Start notification loop (15 sec first, then every 50 sec)
             startNotificationLoop();
-        }, 3000);
+        };
+        
+        // Play startup sound and transition when it ends
+        if (startupSound) {
+            startupSound.play().catch(err => console.log('Audio play failed:', err));
+            
+            // Transition to desktop when sound ends
+            startupSound.addEventListener('ended', goToDesktop, { once: true });
+            
+            // Fallback: if sound doesn't play or takes too long, transition after 2 seconds max
+            setTimeout(goToDesktop, 2000);
+        } else {
+            // No sound, go to desktop immediately
+            goToDesktop();
+        }
     });
     
     // Desktop initialization
@@ -815,16 +879,37 @@ function getWindowContent(type) {
                             
                             <div class="credits-item">
                                 <p class="credits-role">Full-Stack Web Developer</p>
-                                <p class="credits-name">AllotMeal Afroc Platform</p>
+                                <p class="credits-name"><a href="https://allotmealafroc.com" target="_blank" class="credits-clickable" style="color: #667eea; text-decoration: none;">AllotMeal Afroc Platform</a></p>
                                 <p class="credits-desc">2023 - Present</p>
-                                <p class="credits-desc">Led redesign and deployment of allotmealafroc.netlify.app connecting 1000+ hotels, businesses, and stakeholders through listings, networking, and payment services. Built with Next.js, MongoDB, and Netlify.</p>
+                                <p class="credits-desc">Led redesign and deployment of allotmealafroc.com connecting 1000+ hotels, businesses, and stakeholders through listings, networking, and payment services. Built with Next.js, MongoDB, and Netlify.</p>
+                            </div>
+                            
+                            <div class="credits-item">
+                                <p class="credits-role">Radio Platform Developer</p>
+                                <p class="credits-name"><a href="https://radio.kenlive.co.ke" target="_blank" class="credits-clickable" style="color: #667eea; text-decoration: none;">KenLive Radio</a></p>
+                                <p class="credits-desc">2023 - Present</p>
+                                <p class="credits-desc">Created live streaming radio platform for community news and programs founded by Ken Wakuraya, former Inooro news anchor. Built real-time audio broadcasting system with chat features and analytics dashboard handling thousands of concurrent listeners with zero downtime.</p>
+                            </div>
+                            
+                            <div class="credits-item">
+                                <p class="credits-role">Full-Stack Developer & Mobile App Developer</p>
+                                <p class="credits-name"><a href="https://radio.milestoneinstitute.ac.ke" target="_blank" class="credits-clickable" style="color: #667eea; text-decoration: none;">Milestone Radio</a></p>
+                                <p class="credits-desc">2023 - Present</p>
+                                <p class="credits-desc">Developed both web platform and Android mobile app for Milestone Institute's educational radio system. Web platform features scheduled programming and podcast archives. Mobile app has 10,000+ downloads on Google Play Store with live streaming, offline playback, push notifications, and social sharing capabilities.</p>
                             </div>
                             
                             <div class="credits-item">
                                 <p class="credits-role">Mobile App Developer</p>
-                                <p class="credits-name">SCHACCS & Educational Institutions</p>
+                                <p class="credits-name"><a href="https://drive.google.com/file/d/1oNvRwnLwDcZJQZFzQKMfCSbODjAQ2hwW/view?usp=drive_link" target="_blank" class="credits-clickable" style="color: #667eea; text-decoration: none;">SCHACCS & Educational Institutions</a></p>
                                 <p class="credits-desc">2024 - 2025</p>
                                 <p class="credits-desc">Developed parent-student portal with 10,000+ downloads featuring fee overview, academic results, attendance tracking, and event notifications. Built using Flutter, Firebase, and SQLite.</p>
+                            </div>
+                            
+                            <div class="credits-item">
+                                <p class="credits-role">SMS-Based Application Developer</p>
+                                <p class="credits-name"><a href="https://drive.google.com/file/d/13RMQPaovCbr7BipoDhvtZoT6gTUP8hxk/view?usp=drive_link" target="_blank" class="credits-clickable" style="color: #667eea; text-decoration: none;">Rental Management System</a></p>
+                                <p class="credits-desc">2024</p>
+                                <p class="credits-desc">Created innovative SMS-based rental application that reads and processes SMS messages instead of traditional API data. Enables property managers to track rent payments, send reminders, and manage tenants through SMS communication, perfect for areas with limited internet connectivity.</p>
                             </div>
                             
                             <div class="credits-item">
@@ -835,15 +920,15 @@ function getWindowContent(type) {
                             </div>
                             
                             <div class="credits-item">
-                                <p class="credits-role">CRM Web Developer</p>
+                                <p class="credits-role">Freelance Web Developer</p>
                                 <p class="credits-name">Multiple Organizations</p>
                                 <p class="credits-desc">Jan 2023 - Dec 2023</p>
-                                <p class="credits-desc">Built secure, responsive CRM modules using PHP, Laravel, and MySQL. Collaborated in Agile teams to deliver client requirements on schedule, improving operational efficiency by 60%.</p>
+                                <p class="credits-desc">Built secure, responsive web applications and CRM modules using PHP, Laravel, and MySQL. Collaborated with clients to deliver custom solutions on schedule, improving operational efficiency by 60%.</p>
                             </div>
                             
                             <div class="credits-item">
                                 <p class="credits-role">Full-Stack Developer & IT Trainer</p>
-                                <p class="credits-name">Newsline Media</p>
+                                <p class="credits-name"><a href="https://newslinemedia.co.ke" target="_blank" class="credits-clickable" style="color: #667eea; text-decoration: none;">Newsline Media</a></p>
                                 <p class="credits-desc">Aug 2024 - Dec 2025</p>
                                 <p class="credits-desc">Developed platform connecting businesses with students seeking attachments and training opportunities across Kenya. Built comprehensive networking system bridging education and industry.</p>
                                 <p class="credits-desc">Trained attachés in various IT disciplines: Web Development, Android App Development, AI/ML, Cybersecurity, Networking, and Database Management.</p>
@@ -911,6 +996,12 @@ function getWindowContent(type) {
                                 <span style="background: #e6f2ff; color: #0066cc; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Live Streaming</span>
                                 <span style="background: #e6f2ff; color: #0066cc; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">National Visibility</span>
                             </div>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
+                                <span style="background: #e6f2ff; color: #0066cc; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">Next.js</span>
+                                <span style="background: #e6ffe6; color: #009900; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">Node.js</span>
+                                <span style="background: #fff0e6; color: #cc6600; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">Firebase</span>
+                                <span style="background: #ffe6f0; color: #cc0066; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">Figma</span>
+                            </div>
                             <span style="color: #667eea; font-weight: 600; font-size: 14px;">Open App →</span>
                         </div>
                         
@@ -922,6 +1013,12 @@ function getWindowContent(type) {
                             <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
                                 <span style="background: #ffe6f0; color: #cc0066; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Educational</span>
                                 <span style="background: #ffe6f0; color: #cc0066; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Student Media</span>
+                            </div>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
+                                <span style="background: #e6f2ff; color: #0066cc; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">Next.js</span>
+                                <span style="background: #e6ffe6; color: #009900; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">Node.js</span>
+                                <span style="background: #fff0e6; color: #cc6600; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">Firebase</span>
+                                <span style="background: #ffe6f0; color: #cc0066; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">Figma</span>
                             </div>
                             <span style="color: #f5576c; font-weight: 600; font-size: 14px;">Open App →</span>
                         </div>
@@ -935,6 +1032,11 @@ function getWindowContent(type) {
                                 <span style="background: #e6f9ff; color: #0099cc; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">News Platform</span>
                                 <span style="background: #e6f9ff; color: #0099cc; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Journalism</span>
                             </div>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
+                                <span style="background: #e6f2ff; color: #0066cc; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">Next.js</span>
+                                <span style="background: #e6ffe6; color: #009900; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">Node.js</span>
+                                <span style="background: #fff0e6; color: #cc6600; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">Firebase</span>
+                            </div>
                             <span style="color: #00f2fe; font-weight: 600; font-size: 14px;">Open App →</span>
                         </div>
                         
@@ -947,6 +1049,13 @@ function getWindowContent(type) {
                                 <span style="background: #fff4e6; color: #cc6600; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Business Platform</span>
                                 <span style="background: #fff4e6; color: #cc6600; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Pan-African</span>
                             </div>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
+                                <span style="background: #e6f2ff; color: #0066cc; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">Next.js</span>
+                                <span style="background: #e6ffe6; color: #009900; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">Node.js</span>
+                                <span style="background: #fff0e6; color: #cc6600; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">Firebase</span>
+                                <span style="background: #e6ffe6; color: #009900; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">PostgreSQL</span>
+                                <span style="background: #ffe6f0; color: #cc0066; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">M-Pesa API</span>
+                            </div>
                             <span style="color: #fa709a; font-weight: 600; font-size: 14px;">Open App →</span>
                         </div>
                         
@@ -958,6 +1067,11 @@ function getWindowContent(type) {
                             <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
                                 <span style="background: #e6fff9; color: #00997a; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Education</span>
                                 <span style="background: #e6fff9; color: #00997a; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Networking</span>
+                            </div>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
+                                <span style="background: #e6f2ff; color: #0066cc; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">React</span>
+                                <span style="background: #e6ffe6; color: #009900; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">Node.js</span>
+                                <span style="background: #e6ffe6; color: #009900; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">PostgreSQL</span>
                             </div>
                             <span style="color: #30cfd0; font-weight: 600; font-size: 14px;">Open App →</span>
                         </div>
@@ -972,6 +1086,11 @@ function getWindowContent(type) {
                                 <span style="background: #ffe6e6; color: #cc0000; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Renovation</span>
                                 <span style="background: #ffe6e6; color: #cc0000; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Performance</span>
                             </div>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
+                                <span style="background: #ffe6f0; color: #cc0066; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">WordPress</span>
+                                <span style="background: #e6f2ff; color: #0066cc; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">JavaScript</span>
+                                <span style="background: #e6ffe6; color: #009900; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">MySQL</span>
+                            </div>
                             <span style="color: #ff6b6b; font-weight: 600; font-size: 14px;">Open Website →</span>
                         </div>
                         
@@ -984,6 +1103,11 @@ function getWindowContent(type) {
                             <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
                                 <span style="background: #f0ffe6; color: #336600; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">News Platform</span>
                                 <span style="background: #f0ffe6; color: #336600; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">SEO</span>
+                            </div>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
+                                <span style="background: #ffe6f0; color: #cc0066; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">WordPress</span>
+                                <span style="background: #e6f2ff; color: #0066cc; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">JavaScript</span>
+                                <span style="background: #e6ffe6; color: #009900; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">MySQL</span>
                             </div>
                             <span style="color: #56ab2f; font-weight: 600; font-size: 14px;">Open Website →</span>
                         </div>
@@ -998,6 +1122,11 @@ function getWindowContent(type) {
                                 <span style="background: #fff9e6; color: #996600; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Full Stack</span>
                                 <span style="background: #fff9e6; color: #996600; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Security</span>
                             </div>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
+                                <span style="background: #ffe6f0; color: #cc0066; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">WordPress</span>
+                                <span style="background: #e6f2ff; color: #0066cc; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">JavaScript</span>
+                                <span style="background: #e6ffe6; color: #009900; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">MySQL</span>
+                            </div>
                             <span style="color: #f7971e; font-weight: 600; font-size: 14px;">Open Website →</span>
                         </div>
                         
@@ -1009,6 +1138,11 @@ function getWindowContent(type) {
                             <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
                                 <span style="background: #e6fff9; color: #00997a; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Android</span>
                                 <span style="background: #e6fff9; color: #00997a; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">10K+ Downloads</span>
+                            </div>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
+                                <span style="background: #e6f7ff; color: #0099cc; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">Android Studio</span>
+                                <span style="background: #e6f2ff; color: #0066cc; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">Dart/Flutter</span>
+                                <span style="background: #fff0e6; color: #cc6600; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">Firebase</span>
                             </div>
                             <span style="color: #00997a; font-weight: 600; font-size: 14px;">Open in Play Store →</span>
                         </div>
@@ -1025,7 +1159,7 @@ function getWindowContent(type) {
         allprojects: {
             icon: '📂',
             title: 'All Projects - Complete Portfolio',
-            html: `<div style="padding:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);height:100%;overflow-y:auto"><div style="padding:40px 40px 30px"><h1 style="color:white;font-size:36px;margin:0 0 10px 0;text-shadow:2px 2px 4px rgba(0,0,0,0.3);font-weight:bold">Complete Portfolio</h1><p style="color:rgba(255,255,255,0.95);font-size:16px;margin:0">20+ projects across web, mobile, AI/ML, design & research</p></div><div style="padding:0 40px 40px"><div style="margin-bottom:40px"><h2 style="color:white;font-size:24px;margin:0 0 20px 0;display:flex;align-items:center;gap:10px"><span style="font-size:28px">🌐</span> Web Projects</h2><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px"><div onclick="createWindow('allotmeal')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#fa709a 0%,#fee140 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">AllotMeal Africa</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Platform connecting companies across Africa</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Next.js</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">MongoDB</span></div></div><div onclick="createWindow('newslinemedia')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#30cfd0 0%,#330867 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Newsline Media</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Student-business connection platform</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Education</span></div></div><div onclick="createWindow('kenlive-web')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#ff6b6b 0%,#ee5a6f 100%)"></div><div style="position:absolute;top:16px;right:16px;background:#ff6b6b;color:white;padding:6px 12px;border-radius:20px;font-size:11px;font-weight:700">REDESIGNED</div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">KenLive.co.ke</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">60% faster loading times</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Performance</span></div></div><div onclick="createWindow('newsline-web')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#56ab2f 0%,#a8e063 100%)"></div><div style="position:absolute;top:16px;right:16px;background:#ff6b6b;color:white;padding:6px 12px;border-radius:20px;font-size:11px;font-weight:700">REDESIGNED</div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Newsline.co.ke</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">SEO optimization</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">SEO</span></div></div><div onclick="createWindow('bigstar-web')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#f7971e 0%,#ffd200 100%)"></div><div style="position:absolute;top:16px;right:16px;background:#ff6b6b;color:white;padding:6px 12px;border-radius:20px;font-size:11px;font-weight:700">REDESIGNED</div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">BigStarNews.co.ke</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Full stack renovation</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Full Stack</span></div></div><div onclick="window.open('https://github.com/Bramtheking/Ai-detector-Website-React.git','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#667eea 0%,#764ba2 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">AI Detector Website 🔗</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">AI detection platform</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">React</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">TensorFlow</span></div></div><div onclick="window.open('https://drive.google.com/file/d/1EqzwYl-XUOfP6hwRrlKUMhctETF5ridg/view?usp=drive_link','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#4facfe 0%,#00f2fe 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">School Management System 🔗</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Educational platform</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">React</span></div></div></div></div><div style="margin-bottom:40px"><h2 style="color:white;font-size:24px;margin:0 0 20px 0;display:flex;align-items:center;gap:10px"><span style="font-size:28px">📱</span> Mobile Apps</h2><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px"><div onclick="window.open('https://github.com/Bramtheking/SCHACCS.git','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#f093fb 0%,#f5576c 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">SCHACCS App 🔗</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Student portal with 12K+ downloads</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Flutter</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">12K+</span></div></div><div onclick="window.open('https://drive.google.com/file/d/1CzDfpguiAVTYj9Bkzfb3K7LrXs8beBal/view?usp=drive_link','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#a8edea 0%,#fed6e3 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Health Living App 🔗</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Wellness tracking with AI</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Flutter</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">10K+</span></div></div><div onclick="window.open('https://github.com/Bramtheking/aidetectorandroidapp.git','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#ffd200 0%,#f7971e 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">AI Detector App 🔗</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">ML models with 95% accuracy</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">React Native</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">5K+</span></div></div><div onclick="window.open('https://github.com/Bramtheking/healthtracker.git','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#ee5a6f 0%,#f093fb 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Doctor App 🔗</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Video consultations</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Flutter</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">8K+</span></div></div><div style="background:white;padding:24px;border-radius:16px;box-shadow:0 8px 16px rgba(0,0,0,0.15);position:relative;overflow:hidden;opacity:0.85"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#34a853 0%,#0f9d58 100%)"></div><div style="position:absolute;top:16px;right:16px;background:#999;color:white;padding:6px 12px;border-radius:20px;font-size:11px;font-weight:700">PRIVATE</div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">PEFRANK SACCO App</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Secure savings - $2M+ transactions</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Java</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">15K+</span></div></div><div onclick="window.open('https://play.google.com/store/apps/details?id=com.milestoneinstitute.radio','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#764ba2 0%,#667eea 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Milestone Radio App 🔗</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Android app with 10K+ downloads</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Android</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">10K+</span></div></div></div></div><div style="margin-bottom:40px"><h2 style="color:white;font-size:24px;margin:0 0 20px 0;display:flex;align-items:center;gap:10px"><span style="font-size:28px">📻</span> Radio Platforms</h2><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px"><div onclick="createWindow('kenlive')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#667eea 0%,#764ba2 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">KenLive Radio</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Community news platform</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Firebase</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Next.js</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Cloudinary</span></div></div><div onclick="createWindow('milestone')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#f5576c 0%,#f093fb 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Milestone Radio</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Student broadcasting</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Firebase</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Next.js</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Figma</span></div></div><div onclick="createWindow('newsline')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#00f2fe 0%,#4facfe 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Newsline Radio</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Journalism training</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Firebase</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Next.js</span></div></div></div></div><div style="margin-bottom:40px"><h2 style="color:white;font-size:24px;margin:0 0 20px 0;display:flex;align-items:center;gap:10px"><span style="font-size:28px">🤖</span> AI & ML</h2><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px"><div onclick="window.open('https://www.kaggle.com/code/bramwelagina/bramwel','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#20bfff 0%,#4facfe 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Loan Default Prediction 🔗</h3><p style="margin:0;font-size:14px;color:#4a5568;line-height:1.6">Top 100/10,000 - 95% accuracy</p></div><div onclick="window.open('https://www.academia.edu/124266169','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#a8e063 0%,#56ab2f 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">AI Text Detector 🔗</h3><p style="margin:0;font-size:14px;color:#4a5568;line-height:1.6">BERT model for AI vs human text</p></div></div></div><div style="margin-bottom:40px"><h2 style="color:white;font-size:24px;margin:0 0 20px 0;display:flex;align-items:center;gap:10px"><span style="font-size:28px">🎨</span> Design</h2><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px"><div onclick="window.open('https://www.figma.com/design/4kU2NKfmL5YWEijEiJO70W/Coffee-Shop-Mobile-App-Design?node-id=0-1','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#fee140 0%,#fa709a 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Coffee Shop Design 🔗</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Elegant café ordering system</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Figma</span></div></div><div onclick="window.open('https://www.figma.com/design/qhz2JiiViREHisOBP5KOYf/Online-Bike-Shopping-App?node-id=0-1','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#30cfd0 0%,#330867 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Bike Shopping Design 🔗</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">E-commerce with AR preview</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Figma</span></div></div></div></div><div style="margin-bottom:40px"><h2 style="color:white;font-size:24px;margin:0 0 20px 0;display:flex;align-items:center;gap:10px"><span style="font-size:28px">🔬</span> Research</h2><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px"><div onclick="window.open('https://www.academia.edu/124266169','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#667eea 0%,#764ba2 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Simulating Smell Device 🔗</h3><p style="margin:0;font-size:14px;color:#4a5568;line-height:1.6">Electromagnetic wave olfactory device (2024)</p></div><div onclick="window.open('https://www.academia.edu/130053956','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#f5576c 0%,#f093fb 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Hybrid Census Solution 🔗</h3><p style="margin:0;font-size:14px;color:#4a5568;line-height:1.6">96-98% coverage, 90% cost reduction (2025)</p></div><div onclick="window.open('https://www.academia.edu/130053873','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#a8edea 0%,#fed6e3 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Baby-Like AI System 🔗</h3><p style="margin:0;font-size:14px;color:#4a5568;line-height:1.6">AI that learns like a newborn (2025)</p></div></div></div></div></div>`
+            html: `<div style="padding:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);height:100%;overflow-y:auto"><div style="padding:40px 40px 30px"><h1 style="color:white;font-size:36px;margin:0 0 10px 0;text-shadow:2px 2px 4px rgba(0,0,0,0.3);font-weight:bold">Complete Portfolio</h1><p style="color:rgba(255,255,255,0.95);font-size:16px;margin:0">20+ projects across web, mobile, AI/ML, design & research</p></div><div style="padding:0 40px 40px"><div style="margin-bottom:40px"><h2 style="color:white;font-size:24px;margin:0 0 20px 0;display:flex;align-items:center;gap:10px"><span style="font-size:28px">🌐</span> Web Projects</h2><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px"><div onclick="createWindow('allotmeal')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#fa709a 0%,#fee140 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">AllotMeal Africa</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Platform connecting companies across Africa</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">Next.js</span><span style="background:#e6ffe6;color:#009900;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">Node.js</span><span style="background:#fff0e6;color:#cc6600;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">Firebase</span><span style="background:#e6ffe6;color:#009900;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">PostgreSQL</span><span style="background:#ffe6f0;color:#cc0066;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">M-Pesa API</span></div></div><div onclick="createWindow('newslinemedia')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#30cfd0 0%,#330867 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Newsline Media</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Student-business connection platform</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Education</span></div><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">React</span><span style="background:#e6ffe6;color:#009900;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">Node.js</span><span style="background:#e6ffe6;color:#009900;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">PostgreSQL</span></div></div><div onclick="createWindow('kenlive-web')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#ff6b6b 0%,#ee5a6f 100%)"></div><div style="position:absolute;top:16px;right:16px;background:#ff6b6b;color:white;padding:6px 12px;border-radius:20px;font-size:11px;font-weight:700">REDESIGNED</div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">KenLive.co.ke</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">60% faster loading times</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Performance</span></div><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#ffe6f0;color:#cc0066;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">WordPress</span><span style="background:#e6f2ff;color:#0066cc;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">JavaScript</span><span style="background:#e6ffe6;color:#009900;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">MySQL</span></div></div><div onclick="createWindow('newsline-web')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#56ab2f 0%,#a8e063 100%)"></div><div style="position:absolute;top:16px;right:16px;background:#ff6b6b;color:white;padding:6px 12px;border-radius:20px;font-size:11px;font-weight:700">REDESIGNED</div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Newsline.co.ke</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">SEO optimization</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">SEO</span></div><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#ffe6f0;color:#cc0066;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">WordPress</span><span style="background:#e6f2ff;color:#0066cc;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">JavaScript</span><span style="background:#e6ffe6;color:#009900;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">MySQL</span></div></div><div onclick="createWindow('bigstar-web')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#f7971e 0%,#ffd200 100%)"></div><div style="position:absolute;top:16px;right:16px;background:#ff6b6b;color:white;padding:6px 12px;border-radius:20px;font-size:11px;font-weight:700">REDESIGNED</div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">BigStarNews.co.ke</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Full stack renovation</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Full Stack</span></div><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#ffe6f0;color:#cc0066;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">WordPress</span><span style="background:#e6f2ff;color:#0066cc;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">JavaScript</span><span style="background:#e6ffe6;color:#009900;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">MySQL</span></div></div><div onclick="window.open('https://github.com/Bramtheking/Ai-detector-Website-React.git','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#667eea 0%,#764ba2 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">AI Detector Website 🔗</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">AI detection platform</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">React</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">TensorFlow</span></div></div><div onclick="window.open('https://drive.google.com/file/d/1EqzwYl-XUOfP6hwRrlKUMhctETF5ridg/view?usp=drive_link','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#4facfe 0%,#00f2fe 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">School Management System 🔗</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Educational platform</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">React</span></div><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#f0f0f0;color:#333;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">React</span><span style="background:#f0f0f0;color:#333;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">Node.js</span><span style="background:#f0f0f0;color:#333;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">MongoDB</span></div></div></div></div><div style="margin-bottom:40px"><h2 style="color:white;font-size:24px;margin:0 0 20px 0;display:flex;align-items:center;gap:10px"><span style="font-size:28px">📱</span> Mobile Apps</h2><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px"><div onclick="window.open('https://github.com/Bramtheking/SCHACCS.git','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#f093fb 0%,#f5576c 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">SCHACCS App 🔗</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Student portal with 12K+ downloads</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Flutter</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">12K+</span></div><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#f0f0f0;color:#333;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">Flutter</span><span style="background:#f0f0f0;color:#333;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">Dart</span><span style="background:#f0f0f0;color:#333;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">Firebase</span></div></div><div onclick="window.open('https://drive.google.com/file/d/1CzDfpguiAVTYj9Bkzfb3K7LrXs8beBal/view?usp=drive_link','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#a8edea 0%,#fed6e3 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Health Living App 🔗</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Wellness tracking with AI</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Flutter</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">10K+</span></div><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#f0f0f0;color:#333;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">Flutter</span><span style="background:#f0f0f0;color:#333;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">Dart</span><span style="background:#f0f0f0;color:#333;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">TensorFlow</span></div></div><div onclick="window.open('https://github.com/Bramtheking/aidetectorandroidapp.git','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#ffd200 0%,#f7971e 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">AI Detector App 🔗</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">ML models with 95% accuracy</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">React Native</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">5K+</span></div><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#f0f0f0;color:#333;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">React Native</span><span style="background:#f0f0f0;color:#333;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">JavaScript</span><span style="background:#f0f0f0;color:#333;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">TensorFlow</span></div></div><div onclick="window.open('https://github.com/Bramtheking/healthtracker.git','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#ee5a6f 0%,#f093fb 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Doctor App 🔗</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Video consultations</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Flutter</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">8K+</span></div><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#f0f0f0;color:#333;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">Flutter</span><span style="background:#f0f0f0;color:#333;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">Dart</span><span style="background:#f0f0f0;color:#333;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">WebRTC</span></div></div><div style="background:white;padding:24px;border-radius:16px;box-shadow:0 8px 16px rgba(0,0,0,0.15);position:relative;overflow:hidden;opacity:0.85"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#34a853 0%,#0f9d58 100%)"></div><div style="position:absolute;top:16px;right:16px;background:#999;color:white;padding:6px 12px;border-radius:20px;font-size:11px;font-weight:700">PRIVATE</div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">PEFRANK SACCO App</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Secure savings - $2M+ transactions</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Java</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">15K+</span></div><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#f0f0f0;color:#333;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">Java</span><span style="background:#f0f0f0;color:#333;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">Android</span><span style="background:#f0f0f0;color:#333;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">MySQL</span></div></div><div onclick="window.open('https://play.google.com/store/apps/details?id=com.milestoneinstitute.radio','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#764ba2 0%,#667eea 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Milestone Radio App 🔗</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Android app with 10K+ downloads</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Android</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">10K+</span></div><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#f0f0f0;color:#333;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">Android Studio</span><span style="background:#f0f0f0;color:#333;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">Dart/Flutter</span><span style="background:#f0f0f0;color:#333;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">Firebase</span></div></div></div></div><div style="margin-bottom:40px"><h2 style="color:white;font-size:24px;margin:0 0 20px 0;display:flex;align-items:center;gap:10px"><span style="font-size:28px">📻</span> Radio Platforms</h2><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px"><div onclick="createWindow('kenlive')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#667eea 0%,#764ba2 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">KenLive Radio</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Community news platform</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Firebase</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Next.js</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Cloudinary</span></div></div><div onclick="createWindow('milestone')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#f5576c 0%,#f093fb 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Milestone Radio</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Student broadcasting</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Firebase</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Next.js</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Figma</span></div></div><div onclick="createWindow('newsline')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#00f2fe 0%,#4facfe 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Newsline Radio</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Journalism training</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Firebase</span><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Next.js</span></div></div></div></div><div style="margin-bottom:40px"><h2 style="color:white;font-size:24px;margin:0 0 20px 0;display:flex;align-items:center;gap:10px"><span style="font-size:28px">🤖</span> AI & ML</h2><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px"><div onclick="window.open('https://www.kaggle.com/code/bramwelagina/bramwel','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#20bfff 0%,#4facfe 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Loan Default Prediction 🔗</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Top 100/10,000 - 95% accuracy</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#f0f0f0;color:#333;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">Python</span><span style="background:#f0f0f0;color:#333;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">Scikit-learn</span><span style="background:#f0f0f0;color:#333;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">Pandas</span></div></div><div onclick="window.open('https://www.academia.edu/124266169','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#a8e063 0%,#56ab2f 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">AI Text Detector 🔗</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">BERT model for AI vs human text</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#f0f0f0;color:#333;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">Python</span><span style="background:#f0f0f0;color:#333;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">BERT</span><span style="background:#f0f0f0;color:#333;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">TensorFlow</span></div></div>/div></div><div style="margin-bottom:40px"><h2 style="color:white;font-size:24px;margin:0 0 20px 0;display:flex;align-items:center;gap:10px"><span style="font-size:28px">🎨</span> Design</h2><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px"><div onclick="window.open('https://www.figma.com/design/4kU2NKfmL5YWEijEiJO70W/Coffee-Shop-Mobile-App-Design?node-id=0-1','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#fee140 0%,#fa709a 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Coffee Shop Design 🔗</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Elegant café ordering system</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Figma</span></div></div><div onclick="window.open('https://www.figma.com/design/qhz2JiiViREHisOBP5KOYf/Online-Bike-Shopping-App?node-id=0-1','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#30cfd0 0%,#330867 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Bike Shopping Design 🔗</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">E-commerce with AR preview</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#e6f2ff;color:#0066cc;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600">Figma</span></div></div></div></div><div style="margin-bottom:40px"><h2 style="color:white;font-size:24px;margin:0 0 20px 0;display:flex;align-items:center;gap:10px"><span style="font-size:28px">🔬</span> Research</h2><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px"><div onclick="window.open('https://www.academia.edu/124266169','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#667eea 0%,#764ba2 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Simulating Smell Device 🔗</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">Electromagnetic wave olfactory device (2024)</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#f0f0f0;color:#333;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">IoT</span><span style="background:#f0f0f0;color:#333;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">Hardware</span><span style="background:#f0f0f0;color:#333;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">Research</span></div></div><div onclick="window.open('https://www.academia.edu/130053956','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#f5576c 0%,#f093fb 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Hybrid Census Solution 🔗</h3><p style="margin:0 0 16px 0;font-size:14px;color:#4a5568;line-height:1.6">96-98% coverage, 90% cost reduction (2025)</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span style="background:#f0f0f0;color:#333;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">AI/ML</span><span style="background:#f0f0f0;color:#333;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">Big Data</span><span style="background:#f0f0f0;color:#333;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">Research</span></div></div><div onclick="window.open('https://www.academia.edu/130053873','_blank')" style="background:white;padding:24px;border-radius:16px;cursor:pointer;box-shadow:0 8px 16px rgba(0,0,0,0.15);transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 16px 32px rgba(0,0,0,0.25)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 16px rgba(0,0,0,0.15)'"><div style="position:absolute;top:0;left:0;width:6px;height:100%;background:linear-gradient(180deg,#a8edea 0%,#fed6e3 100%)"></div><h3 style="margin:0 0 12px 0;color:#1a202c;font-size:20px;font-weight:bold">Baby-Like AI System 🔗</h3><p style="margin:0;font-size:14px;color:#4a5568;line-height:1.6">AI that learns like a newborn (2025)</p></div></div></div></div></div>`
         },
         kenlive: {
             icon: '📻',
@@ -1034,9 +1168,9 @@ function getWindowContent(type) {
             html: `
                 <div style="height: 100%; display: flex; flex-direction: column; position: relative;">
                     <div class="iframe-loader" id="loader-kenlive">Loading...</div>
-                    <iframe src="https://radio.kenlive.co.ke" style="flex: 1; width: 100%; border: none;" title="KenLive Radio" onload="setTimeout(() => { const loader = document.getElementById('loader-kenlive'); if(loader) loader.remove(); }, 100)"></iframe>
+                    <iframe src="https://radio.kenlive.co.ke" style="flex: 1; width: 100%; border: none;" title="KenLive Radio" onload="document.getElementById('loader-kenlive')?.remove()"></iframe>
                 </div>
-                <script>setTimeout(() => { const loader = document.getElementById('loader-kenlive'); if(loader) loader.remove(); }, 5000);</script>
+                <script>setTimeout(() => { const loader = document.getElementById('loader-kenlive'); if(loader) loader.remove(); }, 3000);</script>
             `
         },
         milestone: {
@@ -1046,9 +1180,9 @@ function getWindowContent(type) {
             html: `
                 <div style="height: 100%; display: flex; flex-direction: column; position: relative;">
                     <div class="iframe-loader" id="loader-milestone">Loading...</div>
-                    <iframe src="https://radio.milestoneinstitute.ac.ke" style="flex: 1; width: 100%; border: none;" title="Milestone Radio" onload="setTimeout(() => { const loader = document.getElementById('loader-milestone'); if(loader) loader.remove(); }, 100)"></iframe>
+                    <iframe src="https://radio.milestoneinstitute.ac.ke" style="flex: 1; width: 100%; border: none;" title="Milestone Radio" onload="document.getElementById('loader-milestone')?.remove()"></iframe>
                 </div>
-                <script>setTimeout(() => { const loader = document.getElementById('loader-milestone'); if(loader) loader.remove(); }, 5000);</script>
+                <script>setTimeout(() => { const loader = document.getElementById('loader-milestone'); if(loader) loader.remove(); }, 3000);</script>
             `
         },
         newsline: {
@@ -1058,9 +1192,9 @@ function getWindowContent(type) {
             html: `
                 <div style="height: 100%; display: flex; flex-direction: column; position: relative;">
                     <div class="iframe-loader" id="loader-newsline">Loading...</div>
-                    <iframe src="https://radio.newsline.co.ke" style="flex: 1; width: 100%; border: none;" title="Newsline Radio" onload="setTimeout(() => { const loader = document.getElementById('loader-newsline'); if(loader) loader.remove(); }, 100)"></iframe>
+                    <iframe src="https://radio.newsline.co.ke" style="flex: 1; width: 100%; border: none;" title="Newsline Radio" onload="document.getElementById('loader-newsline')?.remove()"></iframe>
                 </div>
-                <script>setTimeout(() => { const loader = document.getElementById('loader-newsline'); if(loader) loader.remove(); }, 5000);</script>
+                <script>setTimeout(() => { const loader = document.getElementById('loader-newsline'); if(loader) loader.remove(); }, 3000);</script>
             `
         },
         allotmeal: {
@@ -1070,9 +1204,9 @@ function getWindowContent(type) {
             html: `
                 <div style="height: 100%; display: flex; flex-direction: column; position: relative;">
                     <div class="iframe-loader" id="loader-allotmeal">Loading...</div>
-                    <iframe src="https://allotmealafroc.com" style="flex: 1; width: 100%; border: none;" title="AllotMeal Africa" onload="setTimeout(() => { const loader = document.getElementById('loader-allotmeal'); if(loader) loader.remove(); }, 100)"></iframe>
+                    <iframe src="https://allotmealafroc.com" style="flex: 1; width: 100%; border: none;" title="AllotMeal Africa" onload="document.getElementById('loader-allotmeal')?.remove()"></iframe>
                 </div>
-                <script>setTimeout(() => { const loader = document.getElementById('loader-allotmeal'); if(loader) loader.remove(); }, 5000);</script>
+                <script>setTimeout(() => { const loader = document.getElementById('loader-allotmeal'); if(loader) loader.remove(); }, 3000);</script>
             `
         },
         newslinemedia: {
@@ -1082,9 +1216,9 @@ function getWindowContent(type) {
             html: `
                 <div style="height: 100%; display: flex; flex-direction: column; position: relative;">
                     <div class="iframe-loader" id="loader-newslinemedia">Loading...</div>
-                    <iframe src="https://newslinemedia.co.ke" style="flex: 1; width: 100%; border: none;" title="Newsline Media" onload="setTimeout(() => { const loader = document.getElementById('loader-newslinemedia'); if(loader) loader.remove(); }, 100)"></iframe>
+                    <iframe src="https://newslinemedia.co.ke" style="flex: 1; width: 100%; border: none;" title="Newsline Media" onload="document.getElementById('loader-newslinemedia')?.remove()"></iframe>
                 </div>
-                <script>setTimeout(() => { const loader = document.getElementById('loader-newslinemedia'); if(loader) loader.remove(); }, 5000);</script>
+                <script>setTimeout(() => { const loader = document.getElementById('loader-newslinemedia'); if(loader) loader.remove(); }, 3000);</script>
             `
         },
         'kenlive-web': {
@@ -1094,9 +1228,9 @@ function getWindowContent(type) {
             html: `
                 <div style="height: 100%; display: flex; flex-direction: column; position: relative;">
                     <div class="iframe-loader" id="loader-kenlive-web">Loading...</div>
-                    <iframe src="https://www.kenlive.co.ke" style="flex: 1; width: 100%; border: none;" title="KenLive Website" onload="setTimeout(() => { const loader = document.getElementById('loader-kenlive-web'); if(loader) loader.remove(); }, 100)"></iframe>
+                    <iframe src="https://www.kenlive.co.ke" style="flex: 1; width: 100%; border: none;" title="KenLive Website" onload="document.getElementById('loader-kenlive-web')?.remove()"></iframe>
                 </div>
-                <script>setTimeout(() => { const loader = document.getElementById('loader-kenlive-web'); if(loader) loader.remove(); }, 5000);</script>
+                <script>setTimeout(() => { const loader = document.getElementById('loader-kenlive-web'); if(loader) loader.remove(); }, 3000);</script>
             `
         },
         'newsline-web': {
@@ -1106,9 +1240,9 @@ function getWindowContent(type) {
             html: `
                 <div style="height: 100%; display: flex; flex-direction: column; position: relative;">
                     <div class="iframe-loader" id="loader-newsline-web">Loading...</div>
-                    <iframe src="https://www.newsline.co.ke" style="flex: 1; width: 100%; border: none;" title="Newsline Website" onload="setTimeout(() => { const loader = document.getElementById('loader-newsline-web'); if(loader) loader.remove(); }, 100)"></iframe>
+                    <iframe src="https://www.newsline.co.ke" style="flex: 1; width: 100%; border: none;" title="Newsline Website" onload="document.getElementById('loader-newsline-web')?.remove()"></iframe>
                 </div>
-                <script>setTimeout(() => { const loader = document.getElementById('loader-newsline-web'); if(loader) loader.remove(); }, 5000);</script>
+                <script>setTimeout(() => { const loader = document.getElementById('loader-newsline-web'); if(loader) loader.remove(); }, 3000);</script>
             `
         },
         'bigstar-web': {
@@ -1118,9 +1252,9 @@ function getWindowContent(type) {
             html: `
                 <div style="height: 100%; display: flex; flex-direction: column; position: relative;">
                     <div class="iframe-loader" id="loader-bigstar-web">Loading...</div>
-                    <iframe src="https://www.bigstarnews.co.ke" style="flex: 1; width: 100%; border: none;" title="BigStar News" onload="setTimeout(() => { const loader = document.getElementById('loader-bigstar-web'); if(loader) loader.remove(); }, 100)"></iframe>
+                    <iframe src="https://www.bigstarnews.co.ke" style="flex: 1; width: 100%; border: none;" title="BigStar News" onload="document.getElementById('loader-bigstar-web')?.remove()"></iframe>
                 </div>
-                <script>setTimeout(() => { const loader = document.getElementById('loader-bigstar-web'); if(loader) loader.remove(); }, 5000);</script>
+                <script>setTimeout(() => { const loader = document.getElementById('loader-bigstar-web'); if(loader) loader.remove(); }, 3000);</script>
             `
         },
 
@@ -1129,7 +1263,7 @@ function getWindowContent(type) {
             title: 'Resume',
             html: `
                 <div class="resume-viewer" style="height: 100%; display: flex; flex-direction: column;">
-                    <iframe src="resume.pdf#zoom=100" style="flex: 1; width: 100%; border: none; background: #525252;" title="Resume PDF Viewer"></iframe>
+                    <iframe src="resume.pdf#view=FitH&zoom=100" style="flex: 1; width: 100%; border: none; background: #525252; transform: scale(1); zoom: 1;" title="Resume PDF Viewer"></iframe>
                 </div>
             `
         },
@@ -1237,27 +1371,100 @@ function getWindowContent(type) {
                             <div style="display: flex; justify-content: between; align-items: start; margin-bottom: 12px;">
                                 <div>
                                     <h2 style="color: #1a202c; font-size: 22px; margin: 0 0 4px 0;">Full-Stack Web Developer</h2>
-                                    <p style="color: #667eea; font-size: 16px; font-style: italic; margin: 0 0 8px 0;">AllotMeal Afroc Platform</p>
+                                    <p style="color: #667eea; font-size: 16px; font-style: italic; margin: 0 0 8px 0;"><a href="https://allotmealafroc.com" target="_blank" style="color: #667eea; text-decoration: none; cursor: pointer;">AllotMeal Afroc Platform</a></p>
                                     <p style="color: #718096; font-size: 14px; margin: 0;">2023 - Present</p>
                                 </div>
                             </div>
                             <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin: 16px 0 0 0;">
-                                Led redesign and deployment of allotmealafroc.netlify.app connecting 1000+ hotels, businesses, and stakeholders through listings, networking, and payment services. Built with Next.js, MongoDB, and Netlify, processing thousands of bookings.
+                                Led redesign and deployment of allotmealafroc.com connecting 1000+ hotels, businesses, and stakeholders through listings, networking, and payment services. Built with Next.js, MongoDB, and Netlify, processing thousands of bookings.
                             </p>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px;">
+                                <span style="background: #e6f2ff; color: #0066cc; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">Next.js</span>
+                                <span style="background: #e6ffe6; color: #009900; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">MongoDB</span>
+                                <span style="background: #e6ffff; color: #006666; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">Node.js</span>
+                                <span style="background: #fff0e6; color: #cc6600; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">React</span>
+                            </div>
                         </div>
                         
-                        <!-- Mobile App Developer -->
+                        <!-- KenLive Radio -->
+                        <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                            <div style="display: flex; justify-content: between; align-items: start; margin-bottom: 12px;">
+                                <div>
+                                    <h2 style="color: #1a202c; font-size: 22px; margin: 0 0 4px 0;">Radio Platform Developer</h2>
+                                    <p style="color: #667eea; font-size: 16px; font-style: italic; margin: 0 0 8px 0;"><a href="https://radio.kenlive.co.ke" target="_blank" style="color: #667eea; text-decoration: none; cursor: pointer;">KenLive Radio</a></p>
+                                    <p style="color: #718096; font-size: 14px; margin: 0;">2023 - Present</p>
+                                </div>
+                            </div>
+                            <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin: 16px 0 0 0;">
+                                Created live streaming radio platform for community news and programs founded by Ken Wakuraya, former Inooro news anchor. Built real-time audio broadcasting system with chat features and analytics dashboard handling thousands of concurrent listeners with zero downtime.
+                            </p>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px;">
+                                <span style="background: #ffe6f0; color: #cc0066; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">PHP</span>
+                                <span style="background: #ffe6e6; color: #cc0000; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">Laravel</span>
+                                <span style="background: #e6f2ff; color: #0066cc; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">JavaScript</span>
+                                <span style="background: #e6ffe6; color: #009900; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">MySQL</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Milestone Radio -->
+                        <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                            <div style="display: flex; justify-content: between; align-items: start; margin-bottom: 12px;">
+                                <div>
+                                    <h2 style="color: #1a202c; font-size: 22px; margin: 0 0 4px 0;">Full-Stack Developer & Mobile App Developer</h2>
+                                    <p style="color: #667eea; font-size: 16px; font-style: italic; margin: 0 0 8px 0;"><a href="https://radio.milestoneinstitute.ac.ke" target="_blank" style="color: #667eea; text-decoration: none; cursor: pointer;">Milestone Radio</a></p>
+                                    <p style="color: #718096; font-size: 14px; margin: 0;">2023 - Present</p>
+                                </div>
+                            </div>
+                            <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin: 16px 0 0 0;">
+                                Developed both web platform and Android mobile app for Milestone Institute's educational radio system. Web platform features scheduled programming and podcast archives. Mobile app has 10,000+ downloads on Google Play Store with live streaming, offline playback, push notifications, and social sharing capabilities.
+                            </p>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px;">
+                                <span style="background: #e6f7ff; color: #0099cc; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">Flutter</span>
+                                <span style="background: #e6f2ff; color: #0066cc; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">Dart</span>
+                                <span style="background: #fff0e6; color: #cc6600; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">Firebase</span>
+                                <span style="background: #ffe6f0; color: #cc0066; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">PHP</span>
+                                <span style="background: #e6ffe6; color: #009900; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">MySQL</span>
+                            </div>
+                        </div>
+                        
+                        <!-- SCHACCS -->
                         <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                             <div style="display: flex; justify-content: between; align-items: start; margin-bottom: 12px;">
                                 <div>
                                     <h2 style="color: #1a202c; font-size: 22px; margin: 0 0 4px 0;">Mobile App Developer</h2>
-                                    <p style="color: #667eea; font-size: 16px; font-style: italic; margin: 0 0 8px 0;">SCHACCS & Educational Institutions</p>
+                                    <p style="color: #667eea; font-size: 16px; font-style: italic; margin: 0 0 8px 0;"><a href="https://drive.google.com/file/d/1oNvRwnLwDcZJQZFzQKMfCSbODjAQ2hwW/view?usp=drive_link" target="_blank" style="color: #667eea; text-decoration: none; cursor: pointer;">SCHACCS & Educational Institutions</a></p>
                                     <p style="color: #718096; font-size: 14px; margin: 0;">2024 - 2025</p>
                                 </div>
                             </div>
                             <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin: 16px 0 0 0;">
                                 Developed parent-student portal with 10,000+ downloads featuring fee overview, academic results, attendance tracking, and event notifications. Built using Flutter, Firebase, and SQLite for cross-platform compatibility.
                             </p>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px;">
+                                <span style="background: #e6f7ff; color: #0099cc; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">Flutter</span>
+                                <span style="background: #e6f2ff; color: #0066cc; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">Dart</span>
+                                <span style="background: #fff0e6; color: #cc6600; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">Firebase</span>
+                                <span style="background: #e6ffe6; color: #009900; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">SQLite</span>
+                            </div>
+                        </div>
+                        
+                        <!-- SMS Rental App -->
+                        <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                            <div style="display: flex; justify-content: between; align-items: start; margin-bottom: 12px;">
+                                <div>
+                                    <h2 style="color: #1a202c; font-size: 22px; margin: 0 0 4px 0;">SMS-Based Application Developer</h2>
+                                    <p style="color: #667eea; font-size: 16px; font-style: italic; margin: 0 0 8px 0;"><a href="https://drive.google.com/file/d/13RMQPaovCbr7BipoDhvtZoT6gTUP8hxk/view?usp=drive_link" target="_blank" style="color: #667eea; text-decoration: none; cursor: pointer;">Rental Management System</a></p>
+                                    <p style="color: #718096; font-size: 14px; margin: 0;">2024</p>
+                                </div>
+                            </div>
+                            <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin: 16px 0 0 0;">
+                                Created innovative SMS-based rental application that reads and processes SMS messages instead of traditional API data. Enables property managers to track rent payments, send reminders, and manage tenants through SMS communication, perfect for areas with limited internet connectivity.
+                            </p>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px;">
+                                <span style="background: #e6ffe6; color: #009900; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">Java</span>
+                                <span style="background: #ffe6f0; color: #cc0066; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">Android</span>
+                                <span style="background: #e6ffe6; color: #009900; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">SQLite</span>
+                                <span style="background: #e6f2ff; color: #0066cc; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">SMS API</span>
+                            </div>
                         </div>
                         
                         <!-- Android/iOS Developer -->
@@ -1272,34 +1479,52 @@ function getWindowContent(type) {
                             <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin: 16px 0 0 0;">
                                 Developed cross-platform mobile applications integrating RESTful APIs and optimized UI/UX workflows. Built secure SACCO app processing $2M+ in transactions with zero security incidents using Java (Android) and Swift (iOS).
                             </p>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px;">
+                                <span style="background: #e6ffe6; color: #009900; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">Java</span>
+                                <span style="background: #ffe6f0; color: #cc0066; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">Kotlin</span>
+                                <span style="background: #fff0e6; color: #cc6600; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">Swift</span>
+                                <span style="background: #e6f2ff; color: #0066cc; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">REST API</span>
+                            </div>
                         </div>
                         
-                        <!-- CRM Web Developer -->
+                        <!-- Freelance Web Developer -->
                         <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                             <div style="display: flex; justify-content: between; align-items: start; margin-bottom: 12px;">
                                 <div>
-                                    <h2 style="color: #1a202c; font-size: 22px; margin: 0 0 4px 0;">CRM Web Developer</h2>
+                                    <h2 style="color: #1a202c; font-size: 22px; margin: 0 0 4px 0;">Freelance Web Developer</h2>
                                     <p style="color: #667eea; font-size: 16px; font-style: italic; margin: 0 0 8px 0;">Multiple Organizations</p>
                                     <p style="color: #718096; font-size: 14px; margin: 0;">Jan 2023 - Dec 2023</p>
                                 </div>
                             </div>
                             <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin: 16px 0 0 0;">
-                                Built secure, responsive CRM modules using PHP, Laravel, and MySQL. Collaborated in Agile teams to deliver client requirements on schedule, improving operational efficiency by 60%.
+                                Built secure, responsive web applications and CRM modules using PHP, Laravel, and MySQL. Collaborated with clients to deliver custom solutions on schedule, improving operational efficiency by 60%.
                             </p>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px;">
+                                <span style="background: #ffe6f0; color: #cc0066; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">PHP</span>
+                                <span style="background: #ffe6e6; color: #cc0000; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">Laravel</span>
+                                <span style="background: #e6ffe6; color: #009900; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">MySQL</span>
+                                <span style="background: #e6f2ff; color: #0066cc; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">JavaScript</span>
+                            </div>
                         </div>
                         
                         <!-- Newsline Media -->
                         <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                             <div style="display: flex; justify-content: between; align-items: start; margin-bottom: 12px;">
                                 <div>
-                                    <h2 style="color: #1a202c; font-size: 22px; margin: 0 0 4px 0;">Full-Stack Developer</h2>
-                                    <p style="color: #667eea; font-size: 16px; font-style: italic; margin: 0 0 8px 0;">Newsline Media</p>
+                                    <h2 style="color: #1a202c; font-size: 22px; margin: 0 0 4px 0;">Full-Stack Developer & IT Trainer</h2>
+                                    <p style="color: #667eea; font-size: 16px; font-style: italic; margin: 0 0 8px 0;"><a href="https://newslinemedia.co.ke" target="_blank" style="color: #667eea; text-decoration: none; cursor: pointer;">Newsline Media</a></p>
                                     <p style="color: #718096; font-size: 14px; margin: 0;">Aug 2024 - Dec 2025</p>
                                 </div>
                             </div>
                             <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin: 16px 0 0 0;">
                                 Developed platform connecting businesses with students seeking attachments and training opportunities across Kenya. Built comprehensive networking system bridging education and industry. Additionally, trained attachés in various IT disciplines including web development, Android app development, AI/ML, cybersecurity, networking, and database management.
                             </p>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px;">
+                                <span style="background: #e6f2ff; color: #0066cc; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">React.js</span>
+                                <span style="background: #e6ffe6; color: #009900; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">Node.js</span>
+                                <span style="background: #ffe6f0; color: #cc0066; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">PHP</span>
+                                <span style="background: #e6ffe6; color: #009900; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">MySQL</span>
+                            </div>
                         </div>
                         
                         <!-- MediaCrest -->
@@ -2147,63 +2372,6 @@ function initSpotifyPlayer() {
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     }
 }
-
-
-// Handle tab visibility - consolidated handler
-document.addEventListener('visibilitychange', function() {
-    const audio = document.getElementById('spotify-audio');
-    
-    if (document.hidden) {
-        // Tab is hidden - pause audio only
-        if (audio && !audio.paused) {
-            audio.dataset.wasPlaying = 'true';
-        }
-    } else {
-        // Tab is visible again - resume immediately
-        if (audio && audio.dataset.wasPlaying === 'true') {
-        // Tab is  audio.dataset.wasPlay smoothly
-        }
-        
-        // Update clocudio = iately
-        if (typeifyAudio && ck === 'function') {
-            updateClock();
-        }
-    }
-});
-
-// Prevent animations from accumulating when tab is hidden
-let animationFrameId;
-function smoothUpdate() {
-    if (!document.hidden) {
-        // Update clock and other time-based elements
-        updateClock();
-    }
-    animationFrameId = requestAnimationFrame(smoothUpdate);
-}
-
-// Start smooth updates
-if (typeof updateClock === 'function') {
-    smoothUpdate();
-}
-
-// Handle page freeze on focus
-window.addEventListener('focus', function() {
-    // Small delay to let browser catch up
-    setTimeout(() => {
-        // Refresh any time-dependent elements
-        if (typeof updateClock === 'function') {
-            updateClock();
-        }
-    }, 100);
-});
-
-// Optimize performance by reducing unnecessary repaints
-window.addEventListener('blur', function() {
-    // Cancel any pending animation frames when tab loses focus
-    if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-    }
-});
 
 
 // Performance optimization - Tab visibility tracking (no blocking)

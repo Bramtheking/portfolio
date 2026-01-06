@@ -645,6 +645,11 @@ assword Dialog */
     animation: scrollCredits 80s linear infinite;
     will-change: transform;
     backface-visibility: hidden;
+    /* GPU acceleration for smooth scrolling */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    /* Optimize rendering */
+    contain: layout style paint;
 }
 
 .credits-scroll p,
@@ -659,10 +664,10 @@ assword Dialog */
 
 @keyframes scrollCredits {
     from {
-        transform: translateY(0);
+        transform: translateY(0) translateZ(0);
     }
     to {
-        transform: translateY(-100%);
+        transform: translateY(-100%) translateZ(0);
     }
 }
 

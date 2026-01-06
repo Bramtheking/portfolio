@@ -12,6 +12,43 @@ body {
     width: 100vw;
     height: 100vh;
     background: #000;
+    /* Performance optimizations */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Force GPU acceleration */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    /* Prevent white screen on tab switch */
+    min-height: 100vh;
+    position: relative;
+}
+
+/* Ensure body is always visible */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #000;
+    z-index: -1;
+    pointer-events: none;
+}
+
+/* Reduce repaints when switching tabs */
+body * {
+    will-change: auto;
+}
+
+/* Optimize animations for GPU */
+@media (prefers-reduced-motion: no-preference) {
+    * {
+        transform: translateZ(0);
+        -webkit-transform: translateZ(0);
+    }
 }
 
 .hidden {
@@ -860,7 +897,7 @@ body {
     padding: 5px 0;
     opacity: 0;
     visibility: hidden;
-    transition: opacity 0s 0.6s, visibility 0s 0.6s;
+    transition: opacity 0s 0.2s, visibility 0s 0.2s;
 }
 
 .submenu .start-menu-item {
@@ -1206,27 +1243,6 @@ body.orange-theme .window {
     100% { transform: rotate(360deg); }
 }
 
-
-/* Performance optimization - pause animations when tab is hidden */
-@media (prefers-reduced-motion: reduce) {
-    * {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-    }
-}
-
-/* Prevent animation accumulation on tab switch */
-body.tab-hidden * {
-    animation-play-state: paused !important;
-}
-
-
-/* Performance: Disable interactions when page is hidden */
-body.tab-hidden {
-    pointer-events: none;
-    user-select: none;
-}
 
 /* Optimize GPU usage */
 .desktop,
