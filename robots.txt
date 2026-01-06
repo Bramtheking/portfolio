@@ -5,7 +5,7 @@ Allow: /js/
 Allow: /images/
 Allow: /resume.pdf
 
-Sitemap: https://bramwelagina.com/sitemap.xml
+Sitemap: https://bramwelagina.netlify.app/sitemap.xml
 
 # Optimize crawling
 Crawl-delay: 0
