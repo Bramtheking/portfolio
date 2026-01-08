@@ -935,6 +935,20 @@ function getWindowContent(type) {
                             </div>
                             
                             <div class="credits-item">
+                                <p class="credits-role">WordPress Developer & Website Renovation Specialist</p>
+                                <p class="credits-name"><a href="https://www.kenlive.co.ke" target="_blank" class="credits-clickable" style="color: #667eea; text-decoration: none;">KenLive.co.ke</a></p>
+                                <p class="credits-desc">2023 - 2024</p>
+                                <p class="credits-desc">Complete WordPress website renovation with modern UI/UX, improved performance (60% faster loading times), and responsive design. Implemented custom themes, plugins, and SEO optimization for enhanced user experience and search visibility.</p>
+                            </div>
+                            
+                            <div class="credits-item">
+                                <p class="credits-role">WordPress Developer</p>
+                                <p class="credits-name"><a href="https://www.newsline.co.ke" target="_blank" class="credits-clickable" style="color: #667eea; text-decoration: none;">Newsline.co.ke & BigStarNews.co.ke</a></p>
+                                <p class="credits-desc">2023 - 2024</p>
+                                <p class="credits-desc">Full UI/UX overhaul and complete stack renovation for multiple WordPress news platforms. Enhanced security, scalability, content management, SEO best practices, and accessibility standards. Optimized database queries and implemented caching strategies for improved performance.</p>
+                            </div>
+                            
+                            <div class="credits-item">
                                 <p class="credits-role">Cybersecurity Trainer</p>
                                 <p class="credits-name">MediaCrest</p>
                                 <p class="credits-desc">2024</p>
@@ -986,7 +1000,7 @@ function getWindowContent(type) {
                     <h1 style="color: white; font-size: 32px; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">Featured Projects</h1>
                     <p style="color: rgba(255,255,255,0.9); margin-bottom: 30px; font-size: 14px;">Click any project to explore</p>
                     
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
                         <!-- KenLive Radio -->
                         <div onclick="createWindow('kenlive')" style="background: white; border-radius: 12px; padding: 24px; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" onmouseover="this.style.transform='translateY(-8px)'; this.style.boxShadow='0 12px 24px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)'">
                             <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; margin-bottom: 16px;">📻</div>
@@ -1087,7 +1101,7 @@ function getWindowContent(type) {
                                 <span style="background: #ffe6e6; color: #cc0000; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Performance</span>
                             </div>
                             <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
-                                <span style="background: #ffe6f0; color: #cc0066; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">WordPress</span>
+                                <span style="background: #ffe6f0; color: #cc0066; padding: 6px 14px; border-radius: 12px; font-size: 13px; font-weight: 700; border: 2px solid #cc0066;">WordPress</span>
                                 <span style="background: #e6f2ff; color: #0066cc; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">JavaScript</span>
                                 <span style="background: #e6ffe6; color: #009900; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">MySQL</span>
                             </div>
@@ -1105,7 +1119,7 @@ function getWindowContent(type) {
                                 <span style="background: #f0ffe6; color: #336600; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">SEO</span>
                             </div>
                             <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
-                                <span style="background: #ffe6f0; color: #cc0066; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">WordPress</span>
+                                <span style="background: #ffe6f0; color: #cc0066; padding: 6px 14px; border-radius: 12px; font-size: 13px; font-weight: 700; border: 2px solid #cc0066;">WordPress</span>
                                 <span style="background: #e6f2ff; color: #0066cc; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">JavaScript</span>
                                 <span style="background: #e6ffe6; color: #009900; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">MySQL</span>
                             </div>
@@ -1123,7 +1137,7 @@ function getWindowContent(type) {
                                 <span style="background: #fff9e6; color: #996600; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Security</span>
                             </div>
                             <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
-                                <span style="background: #ffe6f0; color: #cc0066; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">WordPress</span>
+                                <span style="background: #ffe6f0; color: #cc0066; padding: 6px 14px; border-radius: 12px; font-size: 13px; font-weight: 700; border: 2px solid #cc0066;">WordPress</span>
                                 <span style="background: #e6f2ff; color: #0066cc; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">JavaScript</span>
                                 <span style="background: #e6ffe6; color: #009900; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">MySQL</span>
                             </div>
@@ -1523,6 +1537,47 @@ function getWindowContent(type) {
                                 <span style="background: #e6f2ff; color: #0066cc; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">React.js</span>
                                 <span style="background: #e6ffe6; color: #009900; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">Node.js</span>
                                 <span style="background: #ffe6f0; color: #cc0066; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">PHP</span>
+                                <span style="background: #e6ffe6; color: #009900; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">MySQL</span>
+                            </div>
+                        </div>
+                        
+                        <!-- KenLive WordPress -->
+                        <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                            <div style="display: flex; justify-content: between; align-items: start; margin-bottom: 12px;">
+                                <div>
+                                    <h2 style="color: #1a202c; font-size: 22px; margin: 0 0 4px 0;">WordPress Developer & Website Renovation Specialist</h2>
+                                    <p style="color: #667eea; font-size: 16px; font-style: italic; margin: 0 0 8px 0;"><a href="https://www.kenlive.co.ke" target="_blank" style="color: #667eea; text-decoration: none;">KenLive.co.ke</a></p>
+                                    <p style="color: #718096; font-size: 14px; margin: 0;">2023 - 2024</p>
+                                </div>
+                            </div>
+                            <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin: 16px 0 0 0;">
+                                Complete WordPress website renovation with modern UI/UX, improved performance (60% faster loading times), and responsive design. Implemented custom themes, plugins, Elementor page builder, and SEO optimization for enhanced user experience and search visibility.
+                            </p>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px;">
+                                <span style="background: #ffe6f0; color: #cc0066; padding: 6px 14px; border-radius: 12px; font-size: 13px; font-weight: 700; border: 2px solid #cc0066;">WordPress</span>
+                                <span style="background: #e6f2ff; color: #0066cc; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">Elementor</span>
+                                <span style="background: #fff0e6; color: #cc6600; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">SEO</span>
+                                <span style="background: #e6ffe6; color: #009900; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">MySQL</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Newsline & BigStar WordPress -->
+                        <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                            <div style="display: flex; justify-content: between; align-items: start; margin-bottom: 12px;">
+                                <div>
+                                    <h2 style="color: #1a202c; font-size: 22px; margin: 0 0 4px 0;">WordPress Developer</h2>
+                                    <p style="color: #667eea; font-size: 16px; font-style: italic; margin: 0 0 8px 0;"><a href="https://www.newsline.co.ke" target="_blank" style="color: #667eea; text-decoration: none;">Newsline.co.ke</a> & <a href="https://www.bigstarnews.co.ke" target="_blank" style="color: #667eea; text-decoration: none;">BigStarNews.co.ke</a></p>
+                                    <p style="color: #718096; font-size: 14px; margin: 0;">2023 - 2024</p>
+                                </div>
+                            </div>
+                            <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin: 16px 0 0 0;">
+                                Full UI/UX overhaul and complete stack renovation for multiple WordPress news platforms. Enhanced security, scalability, content management, SEO best practices, and accessibility standards. Optimized database queries and implemented caching strategies for improved performance.
+                            </p>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px;">
+                                <span style="background: #ffe6f0; color: #cc0066; padding: 6px 14px; border-radius: 12px; font-size: 13px; font-weight: 700; border: 2px solid #cc0066;">WordPress</span>
+                                <span style="background: #e6f2ff; color: #0066cc; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">Elementor</span>
+                                <span style="background: #fff0e6; color: #cc6600; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">SEO</span>
+                                <span style="background: #ffe6e6; color: #cc0000; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">Security</span>
                                 <span style="background: #e6ffe6; color: #009900; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">MySQL</span>
                             </div>
                         </div>
